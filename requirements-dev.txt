@@ -1,0 +1,4 @@
+# Everything needed to run the checks locally.
+#   python3 -m pip install -r requirements-dev.txt
+pytest==8.3.4
+ruff==0.8.6
