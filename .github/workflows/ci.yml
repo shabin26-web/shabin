@@ -49,3 +49,17 @@ jobs:
 
       - name: Check formatting and style
         run: python -m ruff check .
+
+  printops:
+    name: PrintOps tests (Node)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run money and invoice logic tests
+        run: node --test printing-ops/tests/*.test.js
