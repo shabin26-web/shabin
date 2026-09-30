@@ -61,6 +61,12 @@
 
   let storageOk = true;
   let state = load();
+  // Persist sample data on first run so record links (e.g. #customer/<id>) survive a reload.
+  try {
+    if (!localStorage.getItem(STORE_KEY)) localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  } catch (e) {
+    storageOk = false;
+  }
 
   function load() {
     try {
@@ -91,6 +97,189 @@
   const invTotals = (inv) => C.invoiceTotals(inv);
   const invPaid = (inv) => C.paidFor(inv.id, state.payments);
   const invBalance = (inv) => invTotals(inv).total - invPaid(inv);
+  const money = (h) => `SAR ${sar(h)}`;
+
+  /* ---------- order history & activity ---------- */
+  function logJob(job, text) {
+    if (!job.history) job.history = [];
+    job.history.push({ at: new Date().toISOString(), text });
+  }
+  function setStatus(job, status) {
+    if (!status || job.status === status) return false;
+    logJob(job, `Status changed: ${job.status} → ${status}`);
+    job.status = status;
+    return true;
+  }
+  function jobHistory(j) {
+    return j.history?.length ? j.history : [{ at: (j.createdAt || todayIso()) + "T09:00:00", text: `Order created — ${j.status}` }];
+  }
+  function fmtStamp(at) {
+    if (!at || at.length <= 10) return fmtDate(at);
+    const d = new Date(at);
+    if (isNaN(d)) return fmtDate(at.slice(0, 10));
+    const iso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString();
+    return `${fmtDate(iso.slice(0, 10))} ${iso.slice(11, 16)}`;
+  }
+  /** Everything that happened to these orders and invoices, newest first. */
+  function activityFor(jobs, invoices) {
+    const ev = [];
+    for (const j of jobs) {
+      for (const h of jobHistory(j)) ev.push({ at: h.at, kind: /Delivered$/.test(h.text) ? "done" : "job", text: h.text, ref: j.jobNo, act: "view-job", id: j.id });
+    }
+    for (const i of invoices) {
+      if (i.draft) continue;
+      ev.push({ at: i.issuedAt || i.date, kind: "invoice", text: `Invoice issued — ${money(invTotals(i).total)} incl. VAT`, ref: i.number, act: "view-invoice", id: i.id });
+      if (i.void) ev.push({ at: i.voidedAt || i.issuedAt || i.date, kind: "void", text: "Invoice voided", ref: i.number, act: "view-invoice", id: i.id });
+      for (const p of state.payments.filter((x) => x.invoiceId === i.id)) {
+        ev.push({ at: p.date + "T12:00:00", kind: "payment", text: `Payment received — ${money(C.toHalalas(p.amount))} by ${p.method}${p.reference ? " (" + p.reference + ")" : ""}`, ref: p.receiptNo, act: "view-invoice", id: i.id });
+      }
+    }
+    return ev.sort((a, b) => (Date.parse(b.at) || 0) - (Date.parse(a.at) || 0));
+  }
+  function timeline(events, limit = 60) {
+    if (!events.length) return `<div class="empty">No activity yet.</div>`;
+    return `<ol class="timeline">${events.slice(0, limit).map((e) => `
+      <li class="tl-${e.kind}"><span class="tl-when">${fmtStamp(e.at)}</span>
+        <span class="tl-what"><button type="button" class="link-btn mono" data-act="${e.act}" data-id="${e.id}">${esc(e.ref)}</button> ${esc(e.text)}</span></li>`).join("")}</ol>`;
+  }
+  const jobInvoices = (j) => state.invoices.filter((i) => (i.jobIds || []).includes(j.id) || i.id === j.invoiceId);
+
+  function progressBar(j, compact = false) {
+    const p = C.jobProgress(j.status);
+    if (p.cancelled) return `<div class="progress cancelled" title="Cancelled"><span style="width:0"></span></div>${compact ? "" : `<span class="small muted">Cancelled</span>`}`;
+    return `<div class="progress ${p.pct === 100 ? "complete" : ""}" role="progressbar" aria-valuenow="${p.pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(j.jobNo)} ${p.pct}% complete"><span style="width:${p.pct}%"></span></div>
+      <span class="small muted">${compact ? `${p.step}/${p.of}` : `Step ${p.step} of ${p.of} · ${p.pct}% complete`}</span>`;
+  }
+  function stepper(j) {
+    const p = C.jobProgress(j.status);
+    const reached = new Map();
+    for (const h of jobHistory(j)) {
+      const m = h.text.match(/→ (\w+)$/) || h.text.match(/^Order created — (\w+)$/);
+      if (m && !reached.has(m[1])) reached.set(m[1], h.at);
+    }
+    return `<ol class="stepper ${p.cancelled ? "is-cancelled" : ""}">${C.STAGES.map((st, k) => {
+      const cls = p.cancelled ? "" : k + 1 < p.step ? "done" : k + 1 === p.step ? (p.pct === 100 ? "done" : "current") : "";
+      return `<li class="${cls}"><span class="dot">${cls === "done" ? "✓" : k + 1}</span><span class="lbl">${st}</span>${reached.has(st) && cls ? `<span class="when">${fmtStamp(reached.get(st)).slice(0, 5)}</span>` : ""}</li>`;
+    }).join("")}</ol>`;
+  }
+  function nextStepButton(j, cls = "btn primary") {
+    const p = C.jobProgress(j.status);
+    if (!p.next) return "";
+    const label = p.next === "Delivered" ? "Mark delivered (complete)" : `Move to ${p.next}`;
+    return `<button type="button" class="${cls}" data-act="advance-job" data-id="${j.id}">${label}</button>`;
+  }
+
+  /* ---------- WhatsApp text ---------- */
+  function signature() {
+    const s = state.settings;
+    return `\n— ${s.companyName}${s.phone ? "\n" + s.phone : ""}`;
+  }
+  function jobShareText(j) {
+    const c = customer(j.customerId);
+    const p = C.jobProgress(j.status);
+    const inv = j.invoiceId && byId(state.invoices, j.invoiceId);
+    const t = inv && C.isIssued(inv) ? invTotals(inv) : C.invoiceTotals({ lines: [{ qty: 1, unitPrice: j.price }], vatRate: state.settings.vatRate });
+    const lines = [
+      `*Order ${j.jobNo}* — ${j.title}`,
+      `Customer: ${c.name}`,
+      "",
+      `Product: ${j.product || "—"}`,
+      `Quantity: ${Number(j.qty || 0).toLocaleString("en-US")}`,
+      j.size ? `Size: ${j.size}` : null,
+      j.material ? `Paper / material: ${j.material}` : null,
+      j.colors ? `Colours: ${j.colors}` : null,
+      j.finishing ? `Finishing: ${j.finishing}` : null,
+      "",
+      `Status: *${j.status}*${p.cancelled ? "" : ` (step ${p.step} of ${p.of}, ${p.pct}% complete)`}`,
+      j.dueDate ? `Due date: ${fmtDate(j.dueDate)}` : null,
+      "",
+      `Amount: ${money(t.taxable)} + VAT ${t.rate}% ${sar(t.vat)} = *${money(t.total)}*`,
+    ];
+    if (inv && C.isIssued(inv)) {
+      const bal = invBalance(inv);
+      lines.push(`Invoice: ${inv.number}${invPaid(inv) ? ` · Paid ${money(invPaid(inv))}` : ""} · Balance ${bal > 0 ? money(bal) : "nil (paid in full)"}`);
+    }
+    if (j.notes) lines.push("", `Notes: ${j.notes}`);
+    return lines.filter((x) => x !== null).join("\n") + "\n" + signature();
+  }
+  function invoiceShareText(inv) {
+    const c = customer(inv.customerId);
+    const t = invTotals(inv);
+    const paid = invPaid(inv);
+    const s = state.settings;
+    const lines = [
+      `*${inv.draft ? "Draft invoice" : "Invoice " + inv.number}*${inv.void ? " (VOID)" : ""}`,
+      `Customer: ${c.name}`,
+      `Date: ${fmtDate(inv.date)} · Due: ${fmtDate(inv.dueDate)}`,
+      "",
+      ...inv.lines.map((l) => `• ${l.desc} — ${money(C.lineAmount(l.qty, l.unitPrice))}`),
+      "",
+      `Subtotal: ${money(t.subtotal)}`,
+      t.discount ? `Discount: −${money(t.discount)}` : null,
+      `VAT ${t.rate}%: ${money(t.vat)}`,
+      `*Total: ${money(t.total)}*`,
+      paid ? `Paid: ${money(paid)}` : null,
+      !inv.void && !inv.draft ? `*Balance due: ${money(t.total - paid)}*` : null,
+      s.iban ? `\nBank transfer: ${s.bankName} · IBAN ${s.iban}\nPlease quote ${inv.number || "the invoice number"}.` : null,
+    ];
+    return lines.filter((x) => x !== null).join("\n") + "\n" + signature();
+  }
+  function customerShareText(c) {
+    const t = todayIso();
+    const jobs = state.jobs.filter((j) => j.customerId === c.id);
+    const open = jobs.filter((j) => C.OPEN_JOB_STATUSES.includes(j.status) || j.status === "Quote");
+    const invs = state.invoices.filter((i) => i.customerId === c.id && C.isIssued(i) && invBalance(i) > 0).sort((a, b) => a.date.localeCompare(b.date));
+    const total = invs.reduce((s, i) => s + invBalance(i), 0);
+    const lines = [`*Account summary — ${c.name}*`, `As of ${fmtDate(t)}`, ""];
+    lines.push(open.length ? "*Orders in progress*" : "No orders in progress.");
+    open.forEach((j) => {
+      const p = C.jobProgress(j.status);
+      lines.push(`• ${j.jobNo} ${j.title} — ${j.status} (${p.pct}%)${j.dueDate ? ", due " + fmtDate(j.dueDate) : ""}`);
+    });
+    lines.push("");
+    if (invs.length) {
+      lines.push("*Unpaid invoices*");
+      invs.forEach((i) => lines.push(`• ${i.number} dated ${fmtDate(i.date)} — ${money(invBalance(i))}${i.dueDate < t ? " (overdue)" : ", due " + fmtDate(i.dueDate)}`));
+      lines.push(`*Total balance due: ${money(total)}*`);
+      if (state.settings.iban) lines.push("", `Bank transfer: ${state.settings.bankName} · IBAN ${state.settings.iban}`);
+    } else lines.push("No balance due. Thank you!");
+    return lines.join("\n") + "\n" + signature();
+  }
+
+  let shareBack = null;
+  function shareModal(title, text, phone, back) {
+    shareBack = back || null;
+    const num = C.waPhone(phone);
+    const href = (txt) => `https://wa.me/${num}?text=${encodeURIComponent(txt)}`;
+    openModal({
+      title: `Share on WhatsApp — ${title}`,
+      body: `<label class="field"><span>Message (you can edit it before sending)</span>
+          <textarea id="share-text" rows="16" class="share-text">${esc(text)}</textarea></label>
+        <p class="hint">${num ? `Open WhatsApp starts a chat with <span class="mono">+${num}</span>.` : "No phone number is saved for this customer, so WhatsApp will ask you to pick a contact."} Internal cost and margin figures are never included.</p>`,
+      foot: `${back ? `<button type="button" class="btn" data-act="share-back">Back</button>` : ""}<span class="spacer"></span>
+        <button type="button" class="btn" data-act="share-copy">Copy text</button>
+        <a class="btn primary" id="share-wa" href="${esc(href(text))}" target="_blank" rel="noopener">Open WhatsApp</a>`,
+      onOpen: (body) => {
+        const ta = $("#share-text", body);
+        body.oninput = () => { $("#share-wa").href = href(ta.value); };
+      },
+    });
+  }
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (e) {
+      const ta = $("#share-text") || Object.assign(document.createElement("textarea"), { value: text });
+      if (!ta.isConnected) document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch (_) { ok = false; }
+      if (ta.id !== "share-text") ta.remove();
+      return ok;
+    }
+  }
 
   /* ================= demo data ================= */
   function demoState() {
@@ -135,6 +324,15 @@
       mk(3, "VIP invitations – foil", "Invitations", 400, ["DL", "Curious Metallics 300 g", "2/0 + foil", "Gold foil, envelopes"], 3600, 1900, "Approved", 12, -1),
       mk(1, "Quote: annual report 60pp", "Books", 500, ["A4 portrait", "130 g silk + 300 g cover", "4/4", "Perfect bound"], 18500, 11200, "Quote", 30, 0),
     ];
+    s.jobs.forEach((j) => {
+      const idx = C.STAGES.indexOf(j.status);
+      const end = j.status === "Delivered" ? j.dueDate : t;
+      const span = Math.max(C.daysBetween(j.createdAt, end), idx);
+      j.history = [{ at: j.createdAt + "T09:00:00", text: "Order created — Quote" }];
+      for (let k = 1; k <= idx; k++) {
+        j.history.push({ at: addDays(j.createdAt, Math.round((span * k) / idx)) + `T${10 + k}:00:00`, text: `Status changed: ${C.STAGES[k - 1]} → ${C.STAGES[k]}` });
+      }
+    });
     const lineFor = (j) => ({ desc: `${j.title} — ${j.qty.toLocaleString("en-US")} pcs, ${j.size}, ${j.material}, ${j.colors}, ${j.finishing}`, qty: 1, unitPrice: j.price });
     const issue = (jobIdx, dateOffset, extra = {}) => {
       const j = s.jobs[jobIdx];
@@ -276,12 +474,16 @@
   /* ================= router ================= */
   const routes = {};
   let current = "dashboard";
+  let routeParam = "";
   const viewState = { jobFilter: "open", jobQuery: "", invFilter: "all", invQuery: "", repFrom: "", repTo: "" };
 
   function route() {
-    const r = (location.hash || "#dashboard").slice(1).split("/")[0];
+    const [r, param] = (location.hash || "#dashboard").slice(1).split("/");
     current = routes[r] ? r : "dashboard";
-    $$(".nav a").forEach((a) => a.classList.toggle("active", a.dataset.route === current));
+    routeParam = decodeURIComponent(param || "");
+    const navKey = current === "customer" ? "customers" : current;
+    $$(".nav a").forEach((a) => a.classList.toggle("active", a.dataset.route === navKey));
+    if (modal.open) closeModal();
     render();
   }
   function render() {
@@ -313,8 +515,12 @@
     const upcoming = open
       .slice()
       .sort((a, b) => (a.dueDate || "9").localeCompare(b.dueDate || "9"))
-      .slice(0, 7)
-      .map((j) => `<tr class="${j.dueDate < t ? "late" : ""}"><td class="mono">${esc(j.jobNo)}</td><td class="title-cell">${esc(j.title)}<small>${esc(customer(j.customerId).name)}</small></td><td>${pill(j.status)}</td><td class="num">${fmtDate(j.dueDate)}</td></tr>`)
+      .slice(0, 8)
+      .map((j) => `<tr class="${j.dueDate < t ? "late" : ""}">
+        <td class="title-cell"><button class="link-btn" data-act="view-job" data-id="${j.id}"><span class="mono">${esc(j.jobNo)}</span> ${esc(j.title)}</button><small>${esc(customer(j.customerId).name)}</small></td>
+        <td class="prog-cell">${progressBar(j, true)} <span class="small">${esc(j.status)}</span></td>
+        <td class="num">${fmtDate(j.dueDate)}${j.dueDate < t ? `<br>${pill("Late")}` : ""}</td>
+        <td>${nextStepButton(j, "btn sm")}</td></tr>`)
       .join("");
 
     const recentPays = state.payments
@@ -351,7 +557,7 @@
 
       <div class="cols">
         <section class="panel">
-          <div class="panel-head"><h2>Upcoming deadlines</h2><a href="#jobs" class="small">All jobs</a></div>
+          <div class="panel-head"><h2>Orders to complete</h2><a href="#jobs" class="small">All jobs</a></div>
           <div class="table-wrap">${upcoming ? `<table><tbody>${upcoming}</tbody></table>` : `<div class="empty">No jobs in production.</div>`}</div>
         </section>
         <section class="panel">
@@ -396,12 +602,12 @@
       const late = C.OPEN_JOB_STATUSES.includes(j.status) && j.dueDate && j.dueDate < t;
       const margin = C.toHalalas(j.price) - C.toHalalas(j.cost);
       return `<tr class="${late ? "late" : ""}">
-        <td class="mono">${esc(j.jobNo)}</td>
-        <td class="title-cell">${esc(j.title)}<small>${esc(customer(j.customerId).name)} · ${esc(j.product)}</small></td>
+        <td class="mono"><button class="link-btn mono" data-act="view-job" data-id="${j.id}">${esc(j.jobNo)}</button></td>
+        <td class="title-cell"><button class="link-btn title-link" data-act="view-job" data-id="${j.id}">${esc(j.title)}</button><small><a href="#customer/${j.customerId}">${esc(customer(j.customerId).name)}</a> · ${esc(j.product)}</small></td>
         <td class="small">${esc([j.size, j.material, j.colors, j.finishing].filter(Boolean).join(" · "))}</td>
         <td class="num">${Number(j.qty || 0).toLocaleString("en-US")}</td>
         <td class="num">${fmtDate(j.dueDate)}${late ? `<br>${pill("Late")}` : ""}</td>
-        <td><select class="status-select" data-jobstatus="${j.id}" aria-label="Status of ${esc(j.jobNo)}">${C.JOB_STATUSES.map((s) => `<option ${s === j.status ? "selected" : ""}>${s}</option>`).join("")}</select></td>
+        <td><select class="status-select" data-jobstatus="${j.id}" aria-label="Status of ${esc(j.jobNo)}">${C.JOB_STATUSES.map((s) => `<option ${s === j.status ? "selected" : ""}>${s}</option>`).join("")}</select><div class="prog-cell">${progressBar(j, true)}</div></td>
         <td class="num">${sar(C.toHalalas(j.price))}<br><span class="small ${margin < 0 ? "error" : "muted"}">margin ${sar(margin)}</span></td>
         <td>${inv ? `<button class="link-btn mono" data-act="view-invoice" data-id="${inv.id}">${esc(inv.number || "Draft")}</button>` : j.status === "Quote" || j.status === "Cancelled" ? `<span class="muted">—</span>` : `<button class="btn sm" data-act="invoice-job" data-id="${j.id}">Invoice</button>`}</td>
         <td><div class="row-actions"><button class="btn sm" data-act="edit-job" data-id="${j.id}">Edit</button><button class="btn sm danger" data-act="del-job" data-id="${j.id}" aria-label="Delete ${esc(j.jobNo)}">Delete</button></div></td>
@@ -410,7 +616,7 @@
 
     return `
       <div class="page-head">
-        <div><h1>Jobs</h1><p>Every print order from quote to delivery.</p></div>
+        <div><h1>Jobs</h1><p>Every print order from quote to delivery. Click an order to see its details and history.</p></div>
         <div class="actions"><button class="btn primary" data-act="new-job">New job</button></div>
       </div>
       <div class="toolbar"><div class="chips">${chips}</div></div>
@@ -422,11 +628,11 @@
 
   const PRODUCTS = ["Business cards", "Flyers", "Brochures", "Posters", "Banners", "Stickers", "Menus", "Forms", "Invitations", "Books", "Packaging", "Letterheads", "Envelopes", "Other"];
 
-  function jobForm(job) {
-    const j = job || { status: "Approved", dueDate: addDays(todayIso(), 7), qty: 1000, colors: "4/4" };
+  function jobForm(job, preset = {}) {
+    const j = job || { status: "Approved", dueDate: addDays(todayIso(), 7), qty: 1000, colors: "4/4", ...preset };
     if (!state.customers.length) {
       toast("Add a customer first.");
-      return customerForm(null, () => jobForm(job));
+      return customerForm(null, () => jobForm(job, preset));
     }
     openModal({
       title: job ? `Edit job ${job.jobNo}` : "New job",
@@ -456,10 +662,18 @@
           ...d, title: d.title.trim(), qty: Number(d.qty) || 0,
           price: C.toSar(C.toHalalas(d.price)), cost: C.toSar(C.toHalalas(d.cost || 0)),
         };
-        if (job) Object.assign(job, data);
-        else {
+        if (job) {
+          if (!job.history?.length) job.history = jobHistory(job).slice();
+          const { status, ...rest } = data;
+          const changed = Object.keys(rest).some((k) => String(job[k] ?? "") !== String(rest[k] ?? ""));
+          Object.assign(job, rest);
+          if (changed) logJob(job, "Order details edited");
+          setStatus(job, status);
+        } else {
           state.seq.job += 1;
-          state.jobs.push({ id: uid(), jobNo: `J-${pad(state.seq.job)}`, createdAt: todayIso(), ...data });
+          const nj = { id: uid(), jobNo: `J-${pad(state.seq.job)}`, createdAt: todayIso(), history: [], ...data };
+          logJob(nj, `Order created — ${nj.status}`);
+          state.jobs.push(nj);
         }
         save();
         render();
@@ -508,7 +722,7 @@
         const paid = invs.reduce((s, i) => s + invPaid(i), 0);
         const jobs = state.jobs.filter((j) => j.customerId === c.id).length;
         return `<tr>
-          <td class="title-cell">${esc(c.name)}<small>${esc([c.phone, c.email].filter(Boolean).join(" · "))}</small></td>
+          <td class="title-cell"><a class="title-link" href="#customer/${c.id}">${esc(c.name)}</a><small>${esc([c.phone, c.email].filter(Boolean).join(" · "))}</small></td>
           <td class="mono small">${esc(c.vatNumber || "—")}</td>
           <td class="num">${jobs}</td>
           <td class="num">${sar(billed)}</td><td class="num">${sar(paid)}</td>
@@ -517,9 +731,115 @@
         </tr>`;
       }).join("");
     return `
-      <div class="page-head"><div><h1>Customers</h1><p>Balances include VAT and cover issued invoices only.</p></div>
+      <div class="page-head"><div><h1>Customers</h1><p>Click a customer to see all their orders and activity. Balances include VAT and cover issued invoices only.</p></div>
       <div class="actions"><button class="btn primary" data-act="new-customer">New customer</button></div></div>
       <div class="table-wrap">${rows ? `<table><thead><tr><th>Customer</th><th>VAT no.</th><th class="num">Jobs</th><th class="num">Invoiced</th><th class="num">Received</th><th class="num">Balance</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : `<div class="empty">No customers yet. Add your first customer to start logging jobs.</div>`}</div>`;
+  };
+
+  function viewJob(j) {
+    const t = todayIso();
+    const c = customer(j.customerId);
+    const p = C.jobProgress(j.status);
+    const late = C.OPEN_JOB_STATUSES.includes(j.status) && j.dueDate && j.dueDate < t;
+    const inv = j.invoiceId && byId(state.invoices, j.invoiceId);
+    const issued = inv && C.isIssued(inv);
+    const tt = issued ? invTotals(inv) : C.invoiceTotals({ lines: [{ qty: 1, unitPrice: j.price }], vatRate: state.settings.vatRate });
+    const margin = C.toHalalas(j.price) - C.toHalalas(j.cost);
+    const spec = [["Product", j.product], ["Quantity", Number(j.qty || 0).toLocaleString("en-US")], ["Size", j.size], ["Paper / material", j.material], ["Colours", j.colors], ["Finishing", j.finishing], ["Ordered", fmtDate(j.createdAt)], ["Due date", fmtDate(j.dueDate)]];
+    openModal({
+      title: `${j.jobNo} · ${j.title}`,
+      wide: true,
+      body: `
+        <div class="detail-head">
+          <div><span class="muted small">Customer</span><br><a class="title-link" href="#customer/${c.id}">${esc(c.name)}</a>${c.phone ? `<br><span class="small mono">${esc(c.phone)}</span>` : ""}</div>
+          <div><span class="muted small">Status</span><br>${pill(j.status)} ${late ? pill("Late") : ""}</div>
+          <div><span class="muted small">Due</span><br><b>${fmtDate(j.dueDate)}</b></div>
+          <div class="grow"><span class="muted small">Progress to completion</span><br>${progressBar(j)}</div>
+        </div>
+        ${stepper(j)}
+        <div class="detail-cols">
+          <section><h3>Order details</h3><dl class="kv">${spec.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v || "—")}</dd>`).join("")}</dl>
+            ${j.notes ? `<h3 style="margin-top:12px">Notes</h3><p class="pre">${esc(j.notes)}</p>` : ""}</section>
+          <section><h3>Amount</h3><dl class="kv">
+              <dt>Price excl. VAT</dt><dd class="num">${sar(tt.taxable)}</dd>
+              <dt>VAT ${tt.rate}%</dt><dd class="num">${sar(tt.vat)}</dd>
+              <dt><b>Total incl. VAT</b></dt><dd class="num"><b>${sar(tt.total)}</b></dd>
+            </dl>
+            <h3 style="margin-top:12px">Invoice & payment</h3>
+            ${inv ? `<dl class="kv"><dt>Invoice</dt><dd><button type="button" class="link-btn mono" data-act="view-invoice" data-id="${inv.id}">${esc(inv.number || "Draft")}</button> ${pill(invStatus(inv))}</dd>
+              ${issued ? `<dt>Paid</dt><dd class="num">${sar(invPaid(inv))}</dd><dt>Balance</dt><dd class="num"><b>${sar(invBalance(inv))}</b></dd>` : ""}</dl>`
+              : `<p class="muted">Not invoiced yet.</p>`}
+            <div class="internal"><span class="small muted">Internal only, never shared</span>
+              <dl class="kv"><dt>Estimated cost</dt><dd class="num">${sar(C.toHalalas(j.cost))}</dd><dt>Margin</dt><dd class="num ${margin < 0 ? "error" : ""}">${sar(margin)}${C.toHalalas(j.price) ? ` (${((100 * margin) / C.toHalalas(j.price)).toFixed(1)}%)` : ""}</dd></dl></div>
+          </section>
+        </div>
+        <h3 style="margin:16px 0 8px">Activity</h3>
+        ${timeline(activityFor([j], jobInvoices(j)))}`,
+      foot: `<button type="button" class="btn" data-act="share-job" data-id="${j.id}">Share on WhatsApp</button>
+        <button type="button" class="btn" data-act="edit-job" data-id="${j.id}">Edit</button>
+        <span class="spacer"></span>
+        ${!inv && !p.cancelled && j.status !== "Quote" ? `<button type="button" class="btn" data-act="invoice-job" data-id="${j.id}">Create invoice</button>` : ""}
+        ${nextStepButton(j) || `<button type="button" class="btn primary" data-close>Close</button>`}`,
+    });
+  }
+
+  routes.customer = () => {
+    const c = byId(state.customers, routeParam);
+    if (!c) return `<div class="page-head"><div><h1>Customer not found</h1><p><a href="#customers">Back to customers</a></p></div></div>`;
+    const t = todayIso();
+    const jobs = state.jobs.filter((j) => j.customerId === c.id).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "") || b.jobNo.localeCompare(a.jobNo));
+    const invs = state.invoices.filter((i) => i.customerId === c.id).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    const issued = invs.filter(C.isIssued);
+    const billed = issued.reduce((s, i) => s + invTotals(i).total, 0);
+    const paid = issued.reduce((s, i) => s + invPaid(i), 0);
+    const overdue = issued.filter((i) => invStatus(i) === "Overdue").reduce((s, i) => s + invBalance(i), 0);
+    const inProd = jobs.filter((j) => C.OPEN_JOB_STATUSES.includes(j.status)).length;
+    const done = jobs.filter((j) => j.status === "Delivered").length;
+    const orderRows = jobs.map((j) => {
+      const inv = j.invoiceId && byId(state.invoices, j.invoiceId);
+      const late = C.OPEN_JOB_STATUSES.includes(j.status) && j.dueDate && j.dueDate < t;
+      return `<tr class="${late ? "late" : ""}">
+        <td class="mono"><button class="link-btn mono" data-act="view-job" data-id="${j.id}">${esc(j.jobNo)}</button></td>
+        <td class="title-cell"><button class="link-btn title-link" data-act="view-job" data-id="${j.id}">${esc(j.title)}</button><small>${esc(j.product)} · ${Number(j.qty || 0).toLocaleString("en-US")} pcs</small></td>
+        <td class="num">${fmtDate(j.createdAt)}</td><td class="num">${fmtDate(j.dueDate)}</td>
+        <td class="prog-cell">${pill(j.status)}${progressBar(j, true)}</td>
+        <td class="num">${sar(C.toHalalas(j.price))}</td>
+        <td>${inv ? `<button class="link-btn mono" data-act="view-invoice" data-id="${inv.id}">${esc(inv.number || "Draft")}</button><br>${pill(invStatus(inv))}` : `<span class="muted">—</span>`}</td></tr>`;
+    }).join("");
+    const invRows = invs.map((i) => `<tr><td><button class="link-btn mono" data-act="view-invoice" data-id="${i.id}">${esc(i.number || "Draft")}</button></td><td class="num">${fmtDate(i.date)}</td><td class="num">${sar(invTotals(i).total)}</td><td class="num">${C.isIssued(i) ? sar(invBalance(i)) : "—"}</td><td>${pill(invStatus(i))}</td></tr>`).join("");
+    return `
+      <p style="margin:0 0 6px"><a href="#customers" class="small">← All customers</a></p>
+      <div class="page-head">
+        <div><h1>${esc(c.name)}</h1><p>${esc([c.vatNumber && "VAT " + c.vatNumber, c.phone, c.email, c.address].filter(Boolean).join(" · ") || "No contact details saved")}</p></div>
+        <div class="actions">
+          <button class="btn" data-act="share-customer" data-id="${c.id}">Share on WhatsApp</button>
+          <button class="btn" data-act="statement" data-id="${c.id}">Statement</button>
+          <button class="btn" data-act="edit-customer" data-id="${c.id}">Edit</button>
+          <button class="btn" data-act="new-invoice" data-id="${c.id}">New invoice</button>
+          <button class="btn primary" data-act="new-job" data-id="${c.id}">New order</button>
+        </div>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><span class="label">Orders</span><span class="value">${jobs.length}</span><span class="sub">${done} completed</span></div>
+        <div class="kpi"><span class="label">In production</span><span class="value">${inProd}</span><span class="sub">${jobs.filter((j) => j.status === "Quote").length} quote(s) pending</span></div>
+        <div class="kpi"><span class="label">Invoiced</span><span class="value">${sar(billed)}</span><span class="sub">Incl. VAT</span></div>
+        <div class="kpi"><span class="label">Received</span><span class="value">${sar(paid)}</span><span class="sub">${state.payments.filter((p) => issued.some((i) => i.id === p.invoiceId)).length} payments</span></div>
+        <div class="kpi ${overdue ? "alert" : ""}"><span class="label">Balance due</span><span class="value">${sar(billed - paid)}</span><span class="sub">${overdue ? `${sar(overdue)} overdue` : "Nothing overdue"}</span></div>
+      </div>
+      <section class="panel" style="margin-top:16px">
+        <div class="panel-head"><h2>All orders</h2><span class="small muted">${jobs.length} order${jobs.length === 1 ? "" : "s"}</span></div>
+        <div class="table-wrap">${orderRows ? `<table><thead><tr><th>Job</th><th>Description</th><th class="num">Ordered</th><th class="num">Due</th><th>Progress</th><th class="num">Price excl. VAT</th><th>Invoice</th></tr></thead><tbody>${orderRows}</tbody></table>` : `<div class="empty">No orders yet. Click New order to add one.</div>`}</div>
+      </section>
+      <div class="cols">
+        <section class="panel">
+          <div class="panel-head"><h2>Activity</h2></div>
+          <div class="panel-body">${timeline(activityFor(jobs, invs))}</div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><h2>Invoices</h2></div>
+          <div class="table-wrap">${invRows ? `<table><thead><tr><th>Number</th><th class="num">Date</th><th class="num">Total</th><th class="num">Balance</th><th>Status</th></tr></thead><tbody>${invRows}</tbody></table>` : `<div class="empty">No invoices yet.</div>`}</div>
+        </section>
+      </div>`;
   };
 
   function statement(c) {
@@ -802,6 +1122,7 @@
         ${!inv.draft && !inv.void && !hasPay ? `<button type="button" class="btn danger" data-act="void-invoice" data-id="${inv.id}">Void</button>` : ""}
         ${inv.draft ? `<button type="button" class="btn" data-act="edit-invoice" data-id="${inv.id}">Edit draft</button>` : ""}
         <span class="spacer"></span>
+        <button type="button" class="btn" data-act="share-invoice" data-id="${inv.id}">Share on WhatsApp</button>
         <button type="button" class="btn" data-act="print-invoice" data-id="${inv.id}">Print / PDF</button>
         ${!inv.draft && !inv.void && bal > 0 ? `<button type="button" class="btn primary" data-act="new-payment" data-id="${inv.id}">Record payment</button>` : `<button type="button" class="btn primary" data-close>Close</button>`}`,
     });
@@ -1059,7 +1380,26 @@
     if (!b) return;
     const id = b.dataset.id;
     switch (b.dataset.act) {
-      case "new-job": return jobForm();
+      case "new-job": return jobForm(null, id ? { customerId: id } : {});
+      case "view-job": return viewJob(byId(state.jobs, id));
+      case "view-customer": location.hash = "#customer/" + id; return;
+      case "advance-job": {
+        const j = byId(state.jobs, id);
+        const next = C.jobProgress(j.status).next;
+        if (!next) return;
+        const wasOpen = modal.open;
+        setStatus(j, next);
+        save();
+        render();
+        if (wasOpen) viewJob(j);
+        return toast(next === "Delivered" ? `${j.jobNo} completed${j.invoiceId ? "" : ". Create the invoice next."}` : `${j.jobNo} moved to ${next}`);
+      }
+      case "share-job": { const j = byId(state.jobs, id); return shareModal(j.jobNo, jobShareText(j), customer(j.customerId).phone, () => viewJob(j)); }
+      case "share-invoice": { const i = byId(state.invoices, id); return shareModal(i.number || "Draft", invoiceShareText(i), customer(i.customerId).phone, () => viewInvoice(i)); }
+      case "share-customer": { const c = byId(state.customers, id); return shareModal(c.name, customerShareText(c), c.phone); }
+      case "share-back": return shareBack ? shareBack() : closeModal();
+      case "share-copy":
+        return copyText($("#share-text").value).then((ok) => toast(ok ? "Copied. Paste it into WhatsApp." : "Select the text and copy it manually."));
       case "edit-job": return jobForm(byId(state.jobs, id));
       case "del-job": {
         const j = byId(state.jobs, id);
@@ -1085,7 +1425,7 @@
         const rows = [["Date", "Ref", "Details", "Debit", "Credit", "Balance"], ...entries.map((x) => { bal += x.dr - x.cr; return [x.date, x.ref, x.desc, (x.dr / 100).toFixed(2), (x.cr / 100).toFixed(2), (bal / 100).toFixed(2)]; })];
         return download(`statement-${c.name.replace(/\W+/g, "-")}-${todayIso()}.csv`, toCsv(rows));
       }
-      case "new-invoice": return invoiceForm();
+      case "new-invoice": return invoiceForm(null, id ? { customerId: id } : {});
       case "edit-invoice": return invoiceForm(byId(state.invoices, id));
       case "view-invoice": return viewInvoice(byId(state.invoices, id));
       case "print-invoice": return printInvoice(byId(state.invoices, id));
@@ -1100,6 +1440,7 @@
         const inv = byId(state.invoices, id);
         return confirmBox("Void invoice", `Void <b>${esc(inv.number)}</b>? It stays on file marked VOID, its number is not reused, and linked jobs become available to invoice again. Under VAT rules a correction to an issued invoice is normally made with a credit note; use void only for invoices issued in error and not yet sent.`, "Void invoice", () => {
           inv.void = true;
+          inv.voidedAt = new Date().toISOString();
           state.jobs.forEach((j) => { if (j.invoiceId === id) j.invoiceId = null; });
           save(); render(); toast(`${inv.number} voided`);
         });
@@ -1131,7 +1472,7 @@
   document.addEventListener("change", (e) => {
     if (e.target.matches("[data-jobstatus]")) {
       const j = byId(state.jobs, e.target.dataset.jobstatus);
-      j.status = e.target.value;
+      setStatus(j, e.target.value);
       save();
       render();
       toast(j.status === "Delivered" && !j.invoiceId ? `${j.jobNo} delivered. Click Invoice to bill it.` : `${j.jobNo} → ${j.status}`);

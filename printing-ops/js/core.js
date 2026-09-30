@@ -24,6 +24,33 @@
   ];
   const OPEN_JOB_STATUSES = ["Approved", "Prepress", "Printing", "Finishing", "Ready"];
   const PAYMENT_METHODS = ["Bank transfer", "Cash", "Card / mada", "Cheque", "Other"];
+  /** Production steps in order; an order is complete when it reaches the last one. */
+  const STAGES = JOB_STATUSES.filter((s) => s !== "Cancelled");
+
+  /** Where an order stands: step n of 7, percent complete, and the next step. */
+  function jobProgress(status) {
+    const i = STAGES.indexOf(status);
+    if (i < 0) return { step: 0, of: STAGES.length, pct: 0, next: null, cancelled: true };
+    return {
+      step: i + 1,
+      of: STAGES.length,
+      pct: Math.round((i / (STAGES.length - 1)) * 100),
+      next: STAGES[i + 1] || null,
+      cancelled: false,
+    };
+  }
+
+  /**
+   * Phone number in the international digits-only form WhatsApp links need.
+   * Local Saudi mobiles (05XXXXXXXX or 5XXXXXXXX) get the 966 country code.
+   */
+  function waPhone(phone) {
+    let d = String(phone || "").replace(/\D/g, "");
+    if (d.startsWith("00")) d = d.slice(2);
+    if (d.length === 10 && d.startsWith("05")) d = "966" + d.slice(1);
+    else if (d.length === 9 && d.startsWith("5")) d = "966" + d;
+    return d.length >= 8 ? d : "";
+  }
 
   /** SAR number -> integer halalas, rounded half away from zero. */
   function toHalalas(sar) {
@@ -188,6 +215,9 @@
     JOB_STATUSES,
     OPEN_JOB_STATUSES,
     PAYMENT_METHODS,
+    STAGES,
+    jobProgress,
+    waPhone,
     toHalalas,
     toSar,
     fmt,

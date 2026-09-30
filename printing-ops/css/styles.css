@@ -293,3 +293,59 @@ select.status-select { width: auto; padding: 4px 8px; font-size: 12px; }
   .doc-top, .doc-foot { flex-direction: column; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* ---------- order detail, progress, activity ---------- */
+.title-link { font-weight: 600; color: var(--ink); text-decoration: none; text-align: left; }
+a.title-link:hover, button.title-link:hover { color: var(--accent); text-decoration: underline; }
+td.title-cell small a { color: inherit; }
+.progress { height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; min-width: 70px; }
+.progress span { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.progress.complete span { background: var(--good); }
+.prog-cell { display: flex; flex-direction: column; gap: 3px; min-width: 90px; margin-top: 4px; }
+td.prog-cell { margin-top: 0; display: table-cell; }
+td.prog-cell .progress { margin: 4px 0 2px; }
+
+.detail-head { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: flex-start; margin-bottom: 16px; }
+.detail-head .grow { flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.detail-head .grow br { display: none; }
+
+.stepper { list-style: none; margin: 0 0 18px; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); counter-reset: s; }
+.stepper li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; font-size: 12px; color: var(--ink-3); }
+.stepper li::before { content: ""; position: absolute; top: 12px; left: -50%; right: 50%; height: 2px; background: var(--rule); z-index: 0; }
+.stepper li:first-child::before { display: none; }
+.stepper li.done::before, .stepper li.current::before { background: var(--accent); }
+.stepper .dot { position: relative; z-index: 1; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 600 12px var(--f-mono); background: var(--sheet); border: 2px solid var(--rule); color: var(--ink-3); }
+.stepper li.done .dot { background: var(--accent); border-color: var(--accent); color: var(--sheet); }
+.stepper li.current .dot { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.stepper li.done .lbl, .stepper li.current .lbl { color: var(--ink); font-weight: 600; }
+.stepper .when { font-family: var(--f-mono); font-size: 10.5px; }
+.stepper.is-cancelled { opacity: 0.45; }
+
+.detail-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.detail-cols h3 { margin-bottom: 6px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 0; }
+.kv dt { color: var(--ink-3); }
+.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.kv dd.num { text-align: right; }
+.internal { margin-top: 14px; padding: 10px 12px; border: 1px dashed var(--rule); border-radius: var(--r); display: flex; flex-direction: column; gap: 4px; }
+.pre { white-space: pre-wrap; margin: 0; }
+
+.timeline { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid var(--rule); display: flex; flex-direction: column; gap: 10px; }
+.timeline li { position: relative; display: flex; flex-wrap: wrap; gap: 2px 12px; }
+.timeline li::before { content: ""; position: absolute; left: -20px; top: 5px; width: 10px; height: 10px; border-radius: 50%; background: var(--ink-3); border: 2px solid var(--sheet); }
+.timeline .tl-when { font: 12px var(--f-mono); color: var(--ink-3); min-width: 112px; }
+.timeline .tl-what { flex: 1 1 220px; min-width: 0; }
+.timeline .tl-job::before { background: var(--cyan); }
+.timeline .tl-done::before { background: var(--good); }
+.timeline .tl-invoice::before { background: var(--magenta); }
+.timeline .tl-payment::before { background: var(--good); }
+.timeline .tl-void::before { background: var(--bad); }
+
+.share-text { font: 13px/1.5 var(--f-mono); min-height: 280px; }
+a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+
+@media (max-width: 560px) {
+  .detail-cols { grid-template-columns: 1fr; }
+  .stepper { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 12px; }
+  .stepper li:nth-child(5)::before { display: none; }
+}

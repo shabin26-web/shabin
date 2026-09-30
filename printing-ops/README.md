@@ -19,11 +19,13 @@ your company details (name, VAT number, CR, IBAN), then click **Clear sample dat
 
 | Area | Features |
 | --- | --- |
-| Dashboard | Jobs in production, late jobs, receivables, overdue, invoiced and collected this month, production pipeline, aging buckets, upcoming deadlines, recent payments |
+| Dashboard | Jobs in production, late jobs, receivables, overdue, invoiced and collected this month, production pipeline, aging buckets, **Orders to complete** with progress bars and a one-click next-stage button, recent payments |
 | Jobs | Job number, customer, product, quantity, size, paper, colours (4/4, 4/0…), finishing, due date, price and estimated cost (margin); status from Quote → Approved → Prepress → Printing → Finishing → Ready → Delivered; one-click **Invoice** from a job |
+| Order details | Click any order: 7-step completion tracker with the date each stage was reached, full spec, amount incl. VAT, invoice and payment status, internal cost and margin, and an activity log of every status change, invoice and payment. **Move to next stage** / **Mark delivered (complete)** |
 | Invoices | Draft → Issue (sequential numbers `INV-YYYY-0001`), multi-line, discount before VAT, 15% or 0% VAT, bilingual Tax / Simplified Tax Invoice layout with ZATCA QR, print or save as PDF, void (issued invoices are locked) |
 | Payments | Receipt numbers `RCT-0001`, method (bank transfer, cash, card/mada, cheque), reference; overpayment is blocked |
-| Customers | VAT number validation (15 digits, starts and ends with 3), balances, customer statement with running balance and a tie-out check, statement CSV |
+| Customers | Click a customer to open their page: all previous orders with progress, invoices, balance due and overdue, and a combined activity history. VAT number validation (15 digits, starts and ends with 3), statement with running balance and tie-out check, statement CSV |
+| WhatsApp sharing | **Share on WhatsApp** on orders, invoices and customer pages: editable message text, **Copy text**, or **Open WhatsApp** straight to the customer's number (Saudi numbers such as 05XXXXXXXX are converted to 9665XXXXXXXX). Cost and margin are never included |
 | Reports | Receivables tie-out (invoiced − collected = open balances = aging total, residual 0.00), aging by customer, output VAT by month, collections by method, delivered-job gross margin, CSV exports |
 | Settings | Company details printed on invoices, invoice prefix, payment terms, JSON backup export / import |
 

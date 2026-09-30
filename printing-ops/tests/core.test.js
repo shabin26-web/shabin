@@ -112,3 +112,21 @@ test("Saudi VAT number validation", () => {
   assert.ok(!Core.isValidVatNumber("30000000000000"));
   assert.ok(!Core.isValidVatNumber("100000000000003"));
 });
+
+test("jobProgress walks the production stages", () => {
+  assert.deepEqual(Core.jobProgress("Quote"), { step: 1, of: 7, pct: 0, next: "Approved", cancelled: false });
+  assert.equal(Core.jobProgress("Printing").pct, 50);
+  assert.equal(Core.jobProgress("Printing").next, "Finishing");
+  const done = Core.jobProgress("Delivered");
+  assert.equal(done.pct, 100);
+  assert.equal(done.next, null);
+  assert.equal(Core.jobProgress("Cancelled").cancelled, true);
+});
+
+test("waPhone normalises Saudi numbers for WhatsApp links", () => {
+  assert.equal(Core.waPhone("+966 55 000 0001"), "966550000001");
+  assert.equal(Core.waPhone("0551234567"), "966551234567");
+  assert.equal(Core.waPhone("551234567"), "966551234567");
+  assert.equal(Core.waPhone("00966551234567"), "966551234567");
+  assert.equal(Core.waPhone(""), "");
+});
