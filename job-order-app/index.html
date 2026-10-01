@@ -306,7 +306,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     s.demo = true;
     s.settings = { ...s.settings, companyName: "Al Waha Printing (Sample)", phone: "+966 12 000 0000", dueDays: 3 };
     const at = nowIso();
-    const it = (name, unit, price, spec) => ({ id: uid(), name, unit, price, spec, updatedAt: at });
+    const it = (name, unit, price, spec) => ({ id: uid(), name, unit, price, spec, updatedAt: at, sample: true });
     s.items = [
       it("Business cards", "pcs", 0.15, "85×55 mm, 350 gsm art card, 4/4, matt lamination"),
       it("Flyers A5", "pcs", 0.35, "148×210 mm, 150 gsm gloss, 4/4"),
@@ -315,7 +315,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       it("Stickers round", "pcs", 0.25, "Ø 60 mm, vinyl, die-cut"),
       it("Flex banner", "sqm", 35, "Flex 440 g, eyelets every 50 cm"),
     ];
-    const cu = (name, phone, company, notes) => ({ id: uid(), name, phone, company, notes, updatedAt: at });
+    const cu = (name, phone, company, notes) => ({ id: uid(), name, phone, company, notes, updatedAt: at, sample: true });
     s.customers = [
       cu("Ahmed Al-Harbi", "0550000001", "Red Sea Dental Clinics", "Al Rawdah branch"),
       cu("Sara Al-Ghamdi", "0550000002", "Café Balad", ""),
@@ -326,7 +326,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     const mk = (ci, lines, status, d, pays, notes, due = 3) => {
       n += 1;
       const c = s.customers[ci];
-      return { id: uid(), no: `JO-${String(n).padStart(4, "0")}`, date: addDays(t, d), dueDate: due === null ? "" : addDays(t, d + due), customerId: c.id, customer: { name: c.name, phone: c.phone, company: c.company }, lines, vat: true, vatRate: 15, notes, status, createdAt: addDays(t, d), updatedAt: at,
+      return { id: uid(), no: `JO-${String(n).padStart(4, "0")}`, date: addDays(t, d), dueDate: due === null ? "" : addDays(t, d + due), customerId: c.id, customer: { name: c.name, phone: c.phone, company: c.company }, lines, vat: true, vatRate: 15, notes, status, createdAt: addDays(t, d), updatedAt: at, sample: true,
         payments: pays.map(([amt, m, off]) => ({ id: uid(), date: addDays(t, d + off), amount: amt, method: m, note: "" })) };
     };
     const L = (i, qty, price, note = "") => { const x = s.items[i]; return { name: x.name, spec: x.spec, unit: x.unit, qty, price: price ?? x.price, note }; };
@@ -885,6 +885,28 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       stEdit = null; save(); render(); toast("Backup restored");
     });
   }
+  /** Sample records: flagged ones, plus the fixed sample names from earlier versions. */
+  const SAMPLE_CUST = { "Ahmed Al-Harbi": "0550000001", "Sara Al-Ghamdi": "0550000002", "Omar Saleh": "0550000003" };
+  const isSampleCust = (c) => !!c && (c.sample || SAMPLE_CUST[c.name] === c.phone);
+  function removeSamples() {
+    const before = { o: live(state.orders).length, c: live(state.customers).length, i: live(state.items).length };
+    const sampleCustIds = new Set(state.customers.filter(isSampleCust).map((c) => c.id));
+    state.orders = state.orders.filter((o) => !(o.sample || (sampleCustIds.has(o.customerId) && isSampleCust({ name: o.customer.name, phone: o.customer.phone }))));
+    const keptCust = new Set(state.orders.map((o) => o.customerId));
+    state.customers = state.customers.filter((c) => !(sampleCustIds.has(c.id) && !keptCust.has(c.id)));
+    state.items = state.items.filter((it) => !it.sample);
+    // older sample items had no flag: drop them only if their name, price and details are unchanged
+    const SAMPLE_ITEM_SIG = { "Business cards": 0.15, "Flyers A5": 0.35, "Roll-up banner": 180, "Letterhead A4": 0.6, "Stickers round": 0.25, "Flex banner": 35 };
+    state.items = state.items.filter((it) => !(SAMPLE_ITEM_SIG[it.name] === it.price && /^(85×55 mm|148×210 mm|85×200 cm|A4, 100 gsm|Ø 60 mm|Flex 440 g)/.test(it.spec || "")));
+    const st = state.settings;
+    if (/\(Sample\)$/.test(st.companyName || "")) {
+      // sample company details must never overwrite the real shared settings
+      state.settings = { ...st, companyName: "", phone: st.phone === "+966 12 000 0000" ? "" : st.phone, dueDays: "", updatedAt: "1970-01-01T00:00:00.000Z" };
+    }
+    state.demo = false;
+    const after = { o: live(state.orders).length, c: live(state.customers).length, i: live(state.items).length };
+    return { removed: before.o - after.o + before.c - after.c + before.i - after.i, kept: after };
+  }
   function markAllDirty() {
     TYPES.forEach((t) => state[t].forEach((r) => dirty.add(`${t}:${r.id}`)));
     dirty.add("settings:shared");
@@ -1105,7 +1127,9 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
           await callSync({ action: "ping" });
           if (b.dataset.act === "sync-test") { toast("Connection works."); device.sync = prev; device.sync.error = ""; persist(); return render(); }
           device.sync = { url, pin, since: 0, lastAt: "", lastMsg: "", error: "" };
-          if (state.demo) { state = blank(); draft = newDraft(); keepDraft(); dirty.clear(); } else markAllDirty();
+          if (state.demo) removeSamples();
+          markAllDirty(); // upload everything this device has; sample records were removed above
+          if (state.settings.updatedAt.startsWith("1970")) dirty.delete("settings:shared");
           persist(); render(); toast("Connected. Syncing now…");
           if (device.series === "JO") toast("Connected. Set a different order series for this device, e.g. JO-B.");
           await syncNow(true);
@@ -1139,7 +1163,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       }
       case "restore-file": { const f = $("#restore-file"); f.value = ""; return f.click(); }
       case "restore": return restoreFrom($("#s-restore").value);
-      case "clear-sample": return confirmBox("Clear sample data", "Remove the sample customers, items and orders? Your company settings are kept.", "Clear samples", () => { const keep = state.settings; state = blank(); state.settings = { ...keep, companyName: keep.companyName.replace(/\s*\(Sample\)$/, ""), phone: keep.phone === "+966 12 000 0000" ? "" : keep.phone, dueDays: "", updatedAt: nowIso() }; device.next = 1; dirty.clear(); draft = newDraft(); keepDraft(); stEdit = null; save(); render(); toast("Samples cleared. Add your first item."); });
+      case "clear-sample": return confirmBox("Clear sample data", "Remove the sample customers, items and orders? Anything you added yourself is kept.", "Clear samples", () => { const r = removeSamples(); if (state.settings.updatedAt.startsWith("1970")) state.settings.updatedAt = nowIso(); if (!live(state.orders).length) device.next = 1; draft = newDraft(); keepDraft(); stEdit = null; save(); render(); toast(`Samples removed. Kept ${r.kept.o} orders, ${r.kept.c} customers, ${r.kept.i} items.`); });
       case "load-sample": return confirmBox("Load sample data", "Replace everything on this device with sample data? Share a backup first if you want to keep your records.", "Load samples", () => { state = sample(); dirty.clear(); draft = newDraft(); keepDraft(); stEdit = null; persist(); render(); toast("Sample data loaded"); });
       case "wipe": return confirmBox("Delete everything", `Delete all orders, customers, items and settings on this device? This cannot be undone.${device.sync.url ? " The shared Drive folder is not changed." : ""}`, "Delete everything", () => { state = blank(); state.demo = false; dirty.clear(); device.sync.since = 0; draft = newDraft(); keepDraft(); stEdit = null; persist(); render(); toast("All data deleted on this device"); });
     }
