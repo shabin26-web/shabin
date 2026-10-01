@@ -1,0 +1,8 @@
+{
+  "appId": "sa.printshop.joborders",
+  "appName": "Job Orders",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#0a5fb4"
+  }
+}

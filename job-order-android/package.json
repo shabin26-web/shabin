@@ -1,0 +1,22 @@
+{
+  "name": "job-orders-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Android app wrapper (Capacitor) for job-order-app/index.html",
+  "scripts": {
+    "copy-web": "node scripts/copy-web.mjs",
+    "icons": "node scripts/make-icons.mjs",
+    "sync": "npm run copy-web && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.2",
+    "@capacitor/app": "8.1.1",
+    "@capacitor/clipboard": "8.0.1",
+    "@capacitor/core": "8.5.2",
+    "@capacitor/share": "8.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "3.0.5",
+    "@capacitor/cli": "8.5.2"
+  }
+}

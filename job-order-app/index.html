@@ -213,6 +213,9 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
 (function () {
   "use strict";
   const KEY = "joborders.v1";
+  // Inside the Android app (Capacitor) a few things use native plugins instead of browser APIs.
+  const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  const Plug = NATIVE ? window.Capacitor.Plugins || {} : {};
   const STATUSES = ["New", "In progress", "Ready", "Delivered"];
   const UNITS = ["pcs", "box", "set", "pack", "sheet", "book", "sqm", "m", "roll", "job"];
   const WA_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg>';
@@ -504,10 +507,11 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     openDlg(`Send ${o.no}`, `
       <label class="f"><span>Message. You can edit it before sending.</span><textarea id="msg" class="msg" rows="16">${esc(text)}</textarea></label>
       <p class="small muted" style="margin:0">${num ? `Open WhatsApp starts a chat with <span class="mono">+${num}</span>.` : "This customer has no phone number saved, so WhatsApp will ask you to choose a contact."}</p>`,
-      `${back ? `<button class="btn" data-act="share-back" data-id="${o.id}">Back</button>` : ""}<button class="btn" data-act="copy-msg">Copy text</button><a class="btn wa" id="wa-link" href="${esc(link(text))}" target="_blank" rel="noopener">${WA_ICON} Open WhatsApp</a>`,
+      `${back ? `<button class="btn" data-act="share-back" data-id="${o.id}">Back</button>` : ""}<button class="btn" data-act="copy-msg">Copy text</button>${NATIVE && Plug.Share ? `<button class="btn" data-act="share-other">Other apps</button>` : ""}<a class="btn wa" id="wa-link" href="${esc(link(text))}" target="_blank" rel="noopener">${WA_ICON} Open WhatsApp</a>`,
       (b) => { b.oninput = () => { $("#wa-link").href = link($("#msg").value); }; });
   }
   async function copy(text) {
+    if (NATIVE && Plug.Clipboard) { try { await Plug.Clipboard.write({ string: text }); return true; } catch (e) { /* fall through */ } }
     try { await navigator.clipboard.writeText(text); return true; }
     catch (e) { const ta = $("#msg"); if (ta) { ta.focus(); ta.select(); try { return document.execCommand("copy"); } catch (_) { return false; } } return false; }
   }
@@ -618,7 +622,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       <section class="card section">
         <h2>Backup</h2>
         <p class="small muted" style="margin:0">Your data is saved on this phone or computer only. Copy the backup text now and then, and keep it in WhatsApp (message to yourself), email or Google Drive. Paste it here to restore on another device.</p>
-        <div class="btn-row"><button class="btn" data-act="copy-backup">Copy backup</button><button class="btn" data-act="download-backup">Download file</button></div>
+        <div class="btn-row"><button class="btn" data-act="copy-backup">Copy backup</button>${NATIVE && Plug.Share ? `<button class="btn" data-act="share-backup">Share backup</button>` : `<button class="btn" data-act="download-backup">Download file</button>`}</div>
         <label class="f"><span>Restore: paste backup text</span><textarea id="s-restore" placeholder='{"settings":…}'></textarea></label>
         <button class="btn" data-act="restore">Restore from pasted text</button>
       </section>
@@ -630,6 +634,8 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
 
   /* ---------- events ---------- */
   document.addEventListener("click", async (e) => {
+    const wa = NATIVE && e.target.closest("#wa-link");
+    if (wa) { e.preventDefault(); window.location.href = wa.href; return; } // Android opens the WhatsApp app
     const tb = e.target.closest("[data-tab]");
     if (tb) return go(tb.dataset.tab);
     const sf = e.target.closest("[data-status-filter]");
@@ -709,9 +715,17 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       }
       case "copy-backup": {
         const txt = JSON.stringify(state);
+        if (NATIVE && Plug.Clipboard) { try { await Plug.Clipboard.write({ string: txt }); return toast("Backup copied. Paste it somewhere safe."); } catch (err) { /* fall back below */ } }
         try { await navigator.clipboard.writeText(txt); return toast("Backup copied. Paste it somewhere safe."); }
         catch (err) { const ta = $("#s-restore"); ta.value = txt; ta.focus(); ta.select(); return toast("Backup text is in the box below. Copy it from there."); }
       }
+      case "share-backup":
+        try { await Plug.Share.share({ title: `Job Orders backup ${today()}`, text: JSON.stringify(state), dialogTitle: "Save backup to…" }); }
+        catch (err) { /* user closed the share sheet */ }
+        return;
+      case "share-other":
+        try { await Plug.Share.share({ text: $("#msg").value, dialogTitle: "Send order with…" }); } catch (err) { /* closed */ }
+        return;
       case "download-backup": {
         const a = document.createElement("a");
         a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: "application/json" }));
@@ -735,6 +749,14 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     if (k) { filters[k] = e.target.value; const pos = e.target.selectionStart; render(); const el = $("#" + e.target.id); el.focus(); el.setSelectionRange(pos, pos); }
     else if (e.target.classList.contains("invalid")) e.target.classList.remove("invalid");
   });
+
+  if (NATIVE && Plug.App) {
+    Plug.App.addListener("backButton", () => {
+      if (dlg.open) closeDlg();
+      else if (tab !== "new") go("new");
+      else Plug.App.exitApp();
+    });
+  }
 
   go(["new", "orders", "customers", "items", "settings"].includes(tab) ? tab : "new");
 })();

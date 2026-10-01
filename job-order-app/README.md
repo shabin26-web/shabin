@@ -14,6 +14,10 @@ A simple phone-friendly app for a printing shop:
 
 ## Open it
 
+- **Android app:** download
+  https://github.com/shabin26-web/shabin/releases/download/job-orders-latest/job-orders.apk
+  on the phone and tap Install. See [job-order-android/README.md](../job-order-android/README.md).
+
 - **Computer:** double-click `job-order-app/index.html`.
 - **Phone:** turn on GitHub Pages for this branch (repo *Settings → Pages*), then open
   `https://shabin26-web.github.io/shabin/job-order-app/` and use *Add to Home Screen*.
