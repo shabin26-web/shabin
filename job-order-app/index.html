@@ -80,12 +80,12 @@ h3 { font-size: .95rem; font-weight: 700; }
 .banner { background: var(--warn-soft); color: var(--warn); border-radius: var(--r); padding: 10px 12px; font-size: 13px; margin-bottom: 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
 
 /* tabs */
-.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--card); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--card); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); padding-bottom: env(safe-area-inset-bottom, 0px); }
 .tabs button { background: none; border: 0; height: var(--tabbar); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font: 500 11.5px var(--f-body); color: var(--ink-3); cursor: pointer; }
 .tabs svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .tabs button.on { color: var(--accent); font-weight: 600; }
 @media (min-width: 900px) {
-  .tabs { position: sticky; top: 0; bottom: auto; border-top: 0; border-bottom: 1px solid var(--line); padding-bottom: 0; grid-template-columns: repeat(5, auto); justify-content: center; gap: 4px; }
+  .tabs { position: sticky; top: 0; bottom: auto; border-top: 0; border-bottom: 1px solid var(--line); padding-bottom: 0; grid-template-columns: repeat(6, auto); justify-content: center; gap: 4px; }
   .tabs button { flex-direction: row; height: 52px; padding-inline: 16px; font-size: 14px; gap: 8px; }
   .tabs svg { width: 18px; height: 18px; }
   .wrap { padding-block: 22px 48px; }
@@ -158,6 +158,15 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .pill.done { background: var(--line-2); color: var(--ink-2); }
 .pills { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
 .spec { font-style: italic; }
+.tabs button { font-size: 11px; }
+.pay-row .rno { font-family: var(--f-mono); font-size: 12px; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; }
+.receipt { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.receipt-top { background: var(--good-soft); color: var(--good); padding: 14px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.receipt-top b { font: 600 15px var(--f-mono); }
+.receipt-amt { padding: 16px 14px 6px; font: 600 26px var(--f-mono); }
+.receipt .kv { padding: 6px 14px 14px; }
+.sum-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; font-size: 14px; }
+.sum-card .big { font: 600 18px var(--f-mono); color: var(--good); }
 .due-sum { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; }
 .due-sum b { font: 600 17px var(--f-mono); }
 .due-sum b.has { color: var(--bad); }
@@ -213,6 +222,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
 <nav class="tabs" aria-label="Sections">
   <button data-tab="new"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New order</button>
   <button data-tab="orders"><svg viewBox="0 0 24 24"><path d="M7 3h10l2 3v15H5V6z"/><path d="M9 10h6M9 14h6M9 18h3"/></svg>Orders</button>
+  <button data-tab="receipts"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Receipts</button>
   <button data-tab="customers"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.5-6 8-6s7 2 8 6"/></svg>Customers</button>
   <button data-tab="items"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg>Items</button>
   <button data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
@@ -322,12 +332,12 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       cu("Omar Saleh", "0550000003", "Obhur Events Co.", "Prefers delivery after 4 pm"),
     ];
     const t = today();
-    let n = 0;
+    let n = 0, rn = 0;
     const mk = (ci, lines, status, d, pays, notes, due = 3) => {
       n += 1;
       const c = s.customers[ci];
       return { id: uid(), no: `JO-${String(n).padStart(4, "0")}`, date: addDays(t, d), dueDate: due === null ? "" : addDays(t, d + due), customerId: c.id, customer: { name: c.name, phone: c.phone, company: c.company }, lines, vat: true, vatRate: 15, notes, status, createdAt: addDays(t, d), updatedAt: at, sample: true,
-        payments: pays.map(([amt, m, off]) => ({ id: uid(), date: addDays(t, d + off), amount: amt, method: m, note: "" })) };
+        payments: pays.map(([amt, m, off]) => ({ id: uid(), no: `RCT-${String(++rn).padStart(4, "0")}`, date: addDays(t, d + off), amount: amt, method: m, note: "" })) };
     };
     const L = (i, qty, price, note = "") => { const x = s.items[i]; return { name: x.name, spec: x.spec, unit: x.unit, qty, price: price ?? x.price, note }; };
     s.orders = [
@@ -363,12 +373,16 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     catch (e) { storageOk = false; }
     return sample();
   }
+  /** JO -> RCT, JO-A -> RCT-A, SHOP2 -> RCT-SHOP2 */
+  function receiptSeriesFor(series) { return /^JO(-|$)/.test(series) ? series.replace(/^JO/, "RCT") : `RCT-${series}`; }
   function loadDevice(st) {
     let d = {};
     try { d = JSON.parse(localStorage.getItem(DKEY)) || {}; } catch (e) {}
     if (!d.id) d.id = uid();
     if (!d.series) d.series = "JO";
     if (!d.next) d.next = (st.seq || 0) + 1;
+    if (!d.rseries) d.rseries = receiptSeriesFor(d.series);
+    if (!d.rnext) d.rnext = 1;
     if (!d.theme) d.theme = "auto";
     if (!d.sync) d.sync = { url: "", pin: "", since: 0, lastAt: "", lastMsg: "", error: "" };
     if (!Array.isArray(d.dirty)) d.dirty = [];
@@ -407,6 +421,15 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     state.orders.forEach((o) => { if (o.no && o.no.startsWith(pre)) { const n = parseInt(o.no.slice(pre.length), 10); if (n > max) max = n; } });
     const n = Math.max(device.next || 1, max + 1);
     device.next = n + 1;
+    return `${pre}${String(n).padStart(4, "0")}`;
+  }
+  function receiptNos() { const out = []; state.orders.forEach((o) => (o.payments || []).forEach((p) => { if (p.no) out.push(p.no); })); return out; }
+  function nextReceipt(peek) {
+    const pre = device.rseries + "-";
+    let max = 0;
+    receiptNos().forEach((no) => { if (no.startsWith(pre)) { const n = parseInt(no.slice(pre.length), 10); if (n > max) max = n; } });
+    const n = Math.max(device.rnext || 1, max + 1);
+    if (!peek) device.rnext = n + 1;
     return `${pre}${String(n).padStart(4, "0")}`;
   }
   function previewNumber() {
@@ -464,7 +487,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   /* ---------- tabs ---------- */
   let tab = "new";
   try { tab = localStorage.getItem(KEY + ".tab") || "new"; } catch (e) {}
-  const filters = { status: "Open", q: "", cq: "", iq: "" };
+  const filters = { status: "Open", q: "", cq: "", iq: "", rq: "", rperiod: "month" };
   function go(t) {
     if (t !== tab) stEdit = null;
     tab = t;
@@ -617,7 +640,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     else {
       o = { id: uid(), no: nextNumber(), status: state.settings.statuses[0] || "New", createdAt: today(), payments: [], device: device.id, ...clean };
       const p = hal(draft.paidNow);
-      if (p > 0) o.payments.push({ id: uid(), date: o.date, amount: p / 100, method: draft.payMethod || "Cash", note: "" });
+      if (p > 0) o.payments.push({ id: uid(), no: nextReceipt(), date: o.date, amount: p / 100, method: draft.payMethod || "Cash", note: "" });
       state.orders.push(o);
     }
     touch("orders", o);
@@ -649,15 +672,15 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     if (s.companyName) out.push(`— ${s.companyName}${s.phone ? " · " + s.phone : ""}`);
     return out.join("\n");
   }
-  function shareDlg(o, back) {
-    const num = waPhone(o.customer.phone);
+  function shareDlg(o, back) { shareText(`Send ${o.no}`, message(o), o.customer.phone, back ? `data-act="share-back" data-id="${o.id}"` : ""); }
+  function shareText(title, text, phone, backAttrs) {
+    const num = waPhone(phone);
     const link = (txt) => `https://wa.me/${num}?text=${encodeURIComponent(txt)}`;
-    const text = message(o);
     dlgCtx = null;
-    openDlg(`Send ${o.no}`, `
+    openDlg(title, `
       <label class="f"><span>Message. You can edit it before sending.</span><textarea id="msg" class="msg" rows="16">${esc(text)}</textarea></label>
       <p class="small muted" style="margin:0">${num ? `Open WhatsApp starts a chat with <span class="mono">+${num}</span>.` : "This customer has no phone number saved, so WhatsApp will ask you to choose a contact."} Words between _underscores_ show in italics in WhatsApp.</p>`,
-      `${back ? `<button class="btn" data-act="share-back" data-id="${o.id}">Back</button>` : ""}<button class="btn" data-act="copy-msg">Copy text</button>${NATIVE && Plug.Share ? `<button class="btn" data-act="share-other">Other apps</button>` : ""}<a class="btn wa" id="wa-link" href="${esc(link(text))}" target="_blank" rel="noopener">${WA_ICON} Open WhatsApp</a>`,
+      `${backAttrs ? `<button class="btn" ${backAttrs}>Back</button>` : ""}<button class="btn" data-act="copy-msg">Copy text</button>${NATIVE && Plug.Share ? `<button class="btn" data-act="share-other">Other apps</button>` : ""}<a class="btn wa" id="wa-link" href="${esc(link(text))}" target="_blank" rel="noopener">${WA_ICON} Open WhatsApp</a>`,
       (b) => { b.oninput = () => { $("#wa-link").href = link($("#msg").value); }; });
   }
   async function copy(text) {
@@ -717,7 +740,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       ${o.notes ? `<p style="margin:0"><b>Notes:</b> ${esc(o.notes)}</p>` : ""}
       <label class="f"><span>Status</span><select id="o-status" data-id="${o.id}">${statuses.map((s) => `<option ${s === o.status ? "selected" : ""}>${esc(s)}</option>`).join("")}</select></label>
       <div class="sec-head"><h3>Payments <span class="pill ${ps.tone}">${ps.label}</span></h3>${t.bal > 0 ? `<button class="btn ghost sm" data-act="add-payment" data-id="${o.id}">+ Add payment</button>` : ""}</div>
-      <div class="pay-list">${(o.payments || []).slice().sort((a, b) => a.date.localeCompare(b.date)).map((p) => `<div class="pay-row"><span>${fmtDate(p.date)} · ${esc(p.method)}${p.note ? ` <span class="muted">· ${esc(p.note)}</span>` : ""}</span><span class="num">${fmt(hal(p.amount))}</span><button class="icon-btn" data-act="del-payment" data-id="${o.id}" data-pid="${p.id}" aria-label="Delete payment">×</button></div>`).join("") || `<p class="small muted" style="margin:0">No payment received yet.</p>`}</div>
+      <div class="pay-list">${(o.payments || []).slice().sort((a, b) => a.date.localeCompare(b.date)).map((p) => `<div class="pay-row"><span>${p.no ? `<button class="rno" data-act="open-receipt" data-id="${o.id}" data-pid="${p.id}">${esc(p.no)}</button><br>` : ""}${fmtDate(p.date)} · ${esc(p.method)}${p.note ? ` <span class="muted">· ${esc(p.note)}</span>` : ""}</span><span class="num">${fmt(hal(p.amount))}</span><button class="icon-btn" data-act="del-payment" data-id="${o.id}" data-pid="${p.id}" aria-label="Delete payment">×</button></div>`).join("") || `<p class="small muted" style="margin:0">No payment received yet.</p>`}</div>
       ${t.bal > 0 ? `<button class="btn primary" data-act="mark-paid" data-id="${o.id}">Mark fully paid · ${sar(t.bal)}</button>` : ""}`,
       `<button class="btn danger" data-act="del-order" data-id="${o.id}">Delete</button><button class="btn" data-act="dup-order" data-id="${o.id}">Duplicate</button><button class="btn" data-act="edit-order" data-id="${o.id}">Edit</button><button class="btn wa" data-act="share-order" data-id="${o.id}">${WA_ICON} Send</button>`,
       (b) => { b.onchange = (e) => { if (e.target.id === "o-status") { o.status = e.target.value; touch("orders", o); save(); if (tab === "orders") render(); toast(`${o.no} marked ${o.status}`); } }; });
@@ -737,6 +760,77 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       `<button class="btn" data-act="pay-back" data-id="${o.id}">Back</button><button class="btn primary" data-act="save-payment" data-id="${o.id}">${full ? "Mark fully paid" : "Save payment"}</button>`,
       (b) => { b.onclick = (e) => { const m = e.target.closest("#p-method button"); if (m) $$("#p-method button", b).forEach((x) => x.classList.toggle("on", x === m)); }; });
   }
+
+  /* ---------- receipts ---------- */
+  function allReceipts() {
+    const out = [];
+    live(state.orders).forEach((o) => (o.payments || []).forEach((p) => out.push({ o, p })));
+    return out.sort((a, b) => b.p.date.localeCompare(a.p.date) || String(b.p.no || "").localeCompare(String(a.p.no || "")));
+  }
+  function periodRange(k) {
+    const t = today(), m = t.slice(0, 8) + "01";
+    if (k === "today") return [t, t];
+    if (k === "month") return [m, t];
+    if (k === "last") { const d = new Date(m + "T00:00:00Z"); d.setUTCDate(0); const end = d.toISOString().slice(0, 10); return [end.slice(0, 8) + "01", end]; }
+    return ["", "9999"];
+  }
+  views.receipts = () => {
+    const [from, to] = periodRange(filters.rperiod);
+    const q = filters.rq.toLowerCase();
+    let list = allReceipts().filter(({ p }) => p.date >= from && p.date <= to);
+    if (q) list = list.filter(({ o, p }) => [p.no, o.no, o.customer.name, o.customer.company, p.method, p.note].join(" ").toLowerCase().includes(q));
+    const total = list.reduce((s, x) => s + hal(x.p.amount), 0);
+    const byM = METHODS.map((m) => [m, list.filter((x) => x.p.method === m).reduce((s, x) => s + hal(x.p.amount), 0)]).filter(([, v]) => v);
+    const shown = list.slice(0, 300);
+    return `<div class="top"><div><h1>Receipts</h1><p>Every payment received. Tap a receipt to see it or send it on WhatsApp.</p></div></div>
+      <div class="chips">${[["today", "Today"], ["month", "This month"], ["last", "Last month"], ["all", "All"]].map(([k, l]) => `<button class="chip ${filters.rperiod === k ? "on" : ""}" data-act="r-period" data-p="${k}">${l}</button>`).join("")}</div>
+      <div class="sum-card"><span>Received (${list.length} receipt${list.length === 1 ? "" : "s"})</span><span class="big">${sar(total)}</span>
+        ${byM.map(([m, v]) => `<span class="muted">${esc(m)}</span><span class="num">${fmt(v)}</span>`).join("")}</div>
+      <input type="search" id="r-search" class="search" placeholder="Search receipt, order, customer" value="${esc(filters.rq)}">
+      <div class="list">${shown.map(({ o, p }) => `<button class="row" data-act="open-receipt" data-id="${o.id}" data-pid="${p.id}">
+          <span><span class="t"><span class="mono">${esc(p.no || "Payment")}</span> · ${esc(o.customer.name)}</span><br><span class="s">${fmtDate(p.date)} · ${esc(p.method)} · for ${esc(o.no)}</span>${p.note ? `<br><span class="s">${esc(p.note)}</span>` : ""}</span>
+          <span class="r"><span class="mono">${fmt(hal(p.amount))}</span></span></button>`).join("") || `<div class="empty">No receipts in this period.</div>`}</div>
+      ${list.length > shown.length ? `<p class="small muted" style="text-align:center">Showing the latest 300 of ${list.length}. Search to find older receipts.</p>` : ""}`;
+  };
+  /** Balance on the order right after this payment (payments up to and including it). */
+  function balanceAfter(o, p) {
+    const sorted = (o.payments || []).slice().sort((a, b) => a.date.localeCompare(b.date) || String(a.no || "").localeCompare(String(b.no || "")));
+    let paid = 0;
+    for (const x of sorted) { paid += hal(x.amount); if (x.id === p.id) break; }
+    return { paid, bal: totals(o).total - paid };
+  }
+  function receiptMessage(o, p) {
+    const s = state.settings, t = totals(o), a = balanceAfter(o, p);
+    const out = [`*Payment Receipt ${p.no || ""}*`.replace(" *", "*"), `Date: ${fmtDate(p.date)}`, `Received from: ${o.customer.name}${o.customer.company ? ` (${o.customer.company})` : ""}`, "",
+      `Amount received: *${sar(hal(p.amount))}*`, `Paid by: ${p.method}`];
+    if (p.note) out.push(`Note: ${p.note}`);
+    out.push("", `For job order ${o.no} · total ${sar(t.total)}`, `Paid to date: ${sar(a.paid)}`, a.bal <= 0 ? "*Fully paid* ✓" : `*Balance due: ${sar(a.bal)}*`);
+    if (s.footer) out.push("", s.footer);
+    if (s.companyName) out.push(`— ${s.companyName}${s.phone ? " · " + s.phone : ""}`);
+    return out.join("\n");
+  }
+  function openReceipt(o, p) {
+    if (!o || !p) return closeDlg();
+    const t = totals(o), a = balanceAfter(o, p);
+    openDlg(p.no ? `Receipt ${p.no}` : "Payment", `
+      <div class="receipt">
+        <div class="receipt-top"><b>${esc(p.no || "Payment")}</b><span>${fmtDate(p.date)}</span></div>
+        <div class="receipt-amt">${sar(hal(p.amount))}</div>
+        <dl class="kv">
+          <dt>Received from</dt><dd><b>${esc(o.customer.name)}</b>${o.customer.company ? `<br><span class="small muted">${esc(o.customer.company)}</span>` : ""}</dd>
+          ${o.customer.phone ? `<dt>Phone</dt><dd class="mono">${esc(o.customer.phone)}</dd>` : ""}
+          <dt>Paid by</dt><dd>${esc(p.method)}</dd>
+          ${p.note ? `<dt>Note</dt><dd>${esc(p.note)}</dd>` : ""}
+          <dt>For order</dt><dd><button class="rno" data-act="open-order" data-id="${o.id}">${esc(o.no)}</button> · total ${fmt(t.total)}</dd>
+          <dt>Paid to date</dt><dd class="mono">${fmt(a.paid)}</dd>
+          <dt>Balance after</dt><dd class="mono" style="color:${a.bal > 0 ? "var(--bad)" : "var(--good)"}">${a.bal > 0 ? fmt(a.bal) : "Fully paid"}</dd>
+        </dl>
+      </div>
+      ${t.bal !== a.bal ? `<p class="small muted" style="margin:0">Balance on the order now: ${t.bal > 0 ? sar(t.bal) : "fully paid"}.</p>` : ""}`,
+      `<button class="btn danger" data-act="del-payment" data-id="${o.id}" data-pid="${p.id}">Delete</button><button class="btn" data-act="open-order" data-id="${o.id}">Open order</button><button class="btn wa" data-act="share-receipt" data-id="${o.id}" data-pid="${p.id}">${WA_ICON} Send receipt</button>`);
+    dlgCtx = { kind: "receipt", id: o.id, pid: p.id };
+  }
+  const findPay = (oid, pid) => { const o = byId(state.orders, oid); return [o, o && (o.payments || []).find((x) => x.id === pid)]; };
 
   /* ---------- customers ---------- */
   views.customers = () => {
@@ -835,8 +929,10 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
         <div class="grid2">
           <label class="f"><span>Order number series</span><input id="d-series" value="${esc(device.series)}" maxlength="10" placeholder="JO-A"></label>
           <label class="f"><span>Next number</span><input id="d-next" type="number" min="1" step="1" value="${esc(device.next)}"></label>
+          <label class="f"><span>Receipt series</span><input id="d-rseries" value="${esc(device.rseries)}" maxlength="12" placeholder="RCT-A"></label>
+          <label class="f"><span>Next receipt</span><input id="d-rnext" type="number" min="1" step="1" value="${esc(device.rnext)}"></label>
         </div>
-        <p class="small muted" style="margin:0">Give every phone or computer its own series, for example JO-A, JO-B, JO-C, so numbers never clash. Next order: <span class="mono">${esc(previewNumber())}</span></p>
+        <p class="small muted" style="margin:0">Give every phone or computer its own series, for example JO-A, JO-B, JO-C, so numbers never clash. Next order: <span class="mono">${esc(previewNumber())}</span> · next receipt: <span class="mono">${esc(nextReceipt(true))}</span></p>
         <button class="btn" data-act="save-device">Save device settings</button>
       </section>
 
@@ -982,6 +1078,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     if (dlgCtx && dlg.open) {
       if (dlgCtx.kind === "order") openOrder(byId(state.orders, dlgCtx.id));
       if (dlgCtx.kind === "customer") openCustomer(byId(state.customers, dlgCtx.id));
+      if (dlgCtx.kind === "receipt") openReceipt(...findPay(dlgCtx.id, dlgCtx.pid));
     }
   }
   window.addEventListener("online", () => syncNow(false));
@@ -1020,6 +1117,9 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       case "open-order": return openOrder(byId(state.orders, id));
       case "share-order": return shareDlg(byId(state.orders, id), true);
       case "share-back": case "pay-back": return openOrder(byId(state.orders, id));
+      case "open-receipt": return openReceipt(...findPay(id, b.dataset.pid));
+      case "share-receipt": { const [o, p] = findPay(id, b.dataset.pid); return shareText(`Send receipt ${p.no || ""}`.trim(), receiptMessage(o, p), o.customer.phone, `data-act="open-receipt" data-id="${o.id}" data-pid="${p.id}"`); }
+      case "r-period": filters.rperiod = b.dataset.p; return render();
       case "copy-msg": return toast((await copy($("#msg").value)) ? "Copied. Paste it in WhatsApp." : "Select the text and copy it manually.");
       case "share-other":
         try { await Plug.Share.share({ text: $("#msg").value, dialogTitle: "Send order with…" }); } catch (err) { /* closed */ }
@@ -1032,15 +1132,16 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
         if (amt <= 0) { $("#p-amount").classList.add("invalid"); return toast("Enter an amount above zero."); }
         if (amt > bal) { $("#p-amount").classList.add("invalid"); return toast(`That is more than the balance of ${sar(bal)}.`); }
         const method = ($("#p-method .on") || {}).dataset?.m || "Cash";
-        o.payments.push({ id: uid(), date: $("#p-date").value || today(), amount: amt / 100, method, note: $("#p-note").value.trim() });
-        touch("orders", o); save(); if (tab === "orders") render();
-        openOrder(o);
-        return toast(totals(o).bal <= 0 ? `${o.no} fully paid` : `Payment of ${sar(amt)} saved`);
+        const pay = { id: uid(), no: nextReceipt(), date: $("#p-date").value || today(), amount: amt / 100, method, note: $("#p-note").value.trim() };
+        o.payments.push(pay);
+        touch("orders", o); save(); if (tab === "orders" || tab === "receipts") render();
+        openReceipt(o, pay);
+        return toast(totals(o).bal <= 0 ? `${o.no} fully paid · receipt ${pay.no}` : `Receipt ${pay.no} saved`);
       }
       case "del-payment": {
         const o = byId(state.orders, id), p = o.payments.find((x) => x.id === b.dataset.pid);
         return confirmBox("Delete payment", `Delete the ${esc(p.method)} payment of <b>${sar(hal(p.amount))}</b> on ${fmtDate(p.date)} from ${esc(o.no)}?`, "Delete payment", () => {
-          o.payments = o.payments.filter((x) => x.id !== p.id); touch("orders", o); save(); if (tab === "orders") render(); openOrder(o); toast("Payment deleted");
+          o.payments = o.payments.filter((x) => x.id !== p.id); touch("orders", o); save(); if (tab === "orders" || tab === "receipts") render(); openOrder(o); toast(`${p.no ? "Receipt " + p.no : "Payment"} deleted`);
         });
       }
       case "edit-order": {
@@ -1111,10 +1212,19 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       case "theme": device.theme = b.dataset.themeSet; applyTheme(); persist(); return render();
       case "save-device": {
         const series = $("#d-series").value.trim().toUpperCase(), next = parseInt($("#d-next").value, 10);
+        let rseries = $("#d-rseries").value.trim().toUpperCase().replace(/-+$/, "");
+        const rnext = parseInt($("#d-rnext").value, 10);
+        if (rseries === receiptSeriesFor(device.series)) rseries = receiptSeriesFor(series.replace(/-+$/, "")); // follow the order series unless customised
+        if (!/^[A-Z0-9][A-Z0-9-]{0,11}$/.test(rseries)) { $("#d-rseries").classList.add("invalid"); return toast("Receipt series can use letters, numbers and dashes, for example RCT-A."); }
+        if (!(rnext >= 1)) { $("#d-rnext").classList.add("invalid"); return toast("Next receipt must be 1 or more."); }
         if (!/^[A-Z0-9][A-Z0-9-]{0,9}$/.test(series)) { $("#d-series").classList.add("invalid"); return toast("Series can use letters, numbers and dashes, for example JO-A."); }
         if (!(next >= 1)) { $("#d-next").classList.add("invalid"); return toast("Next number must be 1 or more."); }
-        device.series = series.replace(/-+$/, ""); device.next = next; persist(); render();
-        return toast(`Next order will be ${previewNumber()}`);
+        const newSeries = series.replace(/-+$/, "");
+        // a new series starts again at 1 unless the number was changed by hand (existing numbers are still skipped)
+        device.next = newSeries !== device.series && next === device.next ? 1 : next;
+        device.rnext = rseries !== device.rseries && rnext === device.rnext ? 1 : rnext;
+        device.series = newSeries; device.rseries = rseries; persist(); render();
+        return toast(`Next order ${previewNumber()} · next receipt ${nextReceipt(true)}`);
       }
       case "sync-connect": case "sync-test": {
         const url = (b.dataset.act === "sync-connect" ? $("#y-url").value : device.sync.url).trim(), pin = (b.dataset.act === "sync-connect" ? $("#y-pin").value : device.sync.pin).trim();
@@ -1169,7 +1279,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     }
   });
   document.addEventListener("input", (e) => {
-    const map = { "o-search": "q", "c-search": "cq", "i-search": "iq" };
+    const map = { "o-search": "q", "c-search": "cq", "i-search": "iq", "r-search": "rq" };
     const k = map[e.target.id];
     if (k) { filters[k] = e.target.value; const pos = e.target.selectionStart; render(); const el = $("#" + e.target.id); el.focus(); el.setSelectionRange(pos, pos); }
     else if (e.target.classList.contains("invalid")) e.target.classList.remove("invalid");
@@ -1191,7 +1301,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     });
   }
 
-  go(["new", "orders", "customers", "items", "settings"].includes(tab) ? tab : "new");
+  go(["new", "orders", "receipts", "customers", "items", "settings"].includes(tab) ? tab : "new");
   if (device.sync.url) syncNow(false);
 })();
 </script>

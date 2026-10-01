@@ -14,6 +14,11 @@ A phone-friendly app for a printing shop to create job orders and send them on W
    Tap an order to change status, **Add payment**, **Mark fully paid**, send again, edit,
    duplicate or delete.
 
+6. **Receipts**: every payment gets a receipt number (e.g. `RCT-A-0001`, per device). The
+   Receipts tab lists them for Today / This month / Last month / All with totals by payment method;
+   tap one for the receipt details and **Send receipt** on WhatsApp (amount, method, order, paid to
+   date and balance).
+
 Dates show as `01-Oct-26`. Statuses (New → Design → Waiting approval → Approved → Printing →
 Finishing → Ready → Delivered, On hold, Cancelled) can be renamed, added and reordered in
 Settings. Appearance can be Auto, Light or Dark.
