@@ -4,174 +4,277 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a5fb4">
-<title>Job Order Sender</title>
+<title>Job Orders</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
-/* Layout: phone-first single column, tab bar fixed to the bottom on phones and
-   moved to the top on wide screens. Ticket-like order cards borrow the look of a
-   printed job bag; WhatsApp green is used only on the send button. */
+/* Layout: phone-first. Sticky app bar under the status bar, content column, and a
+   bottom navigation with a raised "New" button. Dialogs open as bottom sheets on
+   phones. Soft white cards on a cool grey ground; blue for actions, WhatsApp green
+   only for sending, red/amber/green only for money and status signals. */
 :root {
-  --bg: #f4f6f8;
+  --bg: #eef1f6;
   --card: #ffffff;
-  --ink: #15181d;
-  --ink-2: #4a515e;
-  --ink-3: #7d8594;
-  --line: #dde2e9;
-  --line-2: #edf0f4;
+  --card-2: #f6f8fb;
+  --ink: #141820;
+  --ink-2: #4a5263;
+  --ink-3: #8089a0;
+  --line: #e2e6ee;
+  --line-2: #eef1f6;
   --accent: #0a5fb4;
-  --accent-soft: #e2edf9;
+  --accent-ink: #ffffff;
+  --accent-soft: #e3eefb;
   --wa: #1a8f4c;
   --wa-ink: #ffffff;
-  --good: #1d7a46; --good-soft: #e1f2e8;
-  --warn: #946100; --warn-soft: #fcf0d4;
-  --bad: #b3261e; --bad-soft: #fbe3e1;
-  --info: #0a5fb4; --info-soft: #e2edf9;
-  --shadow: 0 1px 2px rgb(21 24 29 / .06), 0 6px 20px rgb(21 24 29 / .08);
+  --good: #1b7a44; --good-soft: #e1f3e8;
+  --warn: #9a6200; --warn-soft: #fcf0d3;
+  --bad: #c0262d; --bad-soft: #fde6e6;
+  --info: #0a5fb4; --info-soft: #e3eefb;
+  --shadow: 0 1px 2px rgb(20 24 32 / .05), 0 4px 14px rgb(20 24 32 / .06);
+  --shadow-up: 0 -2px 16px rgb(20 24 32 / .08);
   --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
   --f-body: "IBM Plex Sans", "Segoe UI", Roboto, Arial, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
-  --r: 10px;
-  --tabbar: 64px;
+  --r: 14px;
+  --nav: 64px;
+  /* status bar / gesture bar space: Capacitor injects --safe-area-inset-*, browsers use env() */
+  --sat: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --sab: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #101216; --card: #191c22; --ink: #e9ecf1; --ink-2: #b5bcc8; --ink-3: #868e9d;
-    --line: #2c313b; --line-2: #22262e; --accent: #6aaef0; --accent-soft: #1b2b40;
-    --wa: #2fb866; --wa-ink: #0b1a10;
-    --good: #5cc98a; --good-soft: #17301f; --warn: #e8b547; --warn-soft: #33290f;
-    --bad: #f07a70; --bad-soft: #3a1c1a; --info: #6aaef0; --info-soft: #1b2b40;
-    --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 6px 20px rgb(0 0 0 / .35);
+    --bg: #0e1116; --card: #181c23; --card-2: #1e232c; --ink: #e9ecf2; --ink-2: #b4bccb; --ink-3: #848ea2;
+    --line: #2a303b; --line-2: #222731; --accent: #6aaef0; --accent-ink: #0b1626; --accent-soft: #1b2b40;
+    --wa: #2fb866; --wa-ink: #08180e;
+    --good: #5cc98a; --good-soft: #15301f; --warn: #e8b547; --warn-soft: #33290f; --bad: #f2827a; --bad-soft: #3a1c1b; --info: #6aaef0; --info-soft: #1b2b40;
+    --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 4px 14px rgb(0 0 0 / .25); --shadow-up: 0 -2px 16px rgb(0 0 0 / .35);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #101216; --card: #191c22; --ink: #e9ecf1; --ink-2: #b5bcc8; --ink-3: #868e9d;
-  --line: #2c313b; --line-2: #22262e; --accent: #6aaef0; --accent-soft: #1b2b40;
-  --wa: #2fb866; --wa-ink: #0b1a10;
-  --good: #5cc98a; --good-soft: #17301f; --warn: #e8b547; --warn-soft: #33290f;
-  --bad: #f07a70; --bad-soft: #3a1c1a; --info: #6aaef0; --info-soft: #1b2b40;
-  --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 6px 20px rgb(0 0 0 / .35);
+  --bg: #0e1116; --card: #181c23; --card-2: #1e232c; --ink: #e9ecf2; --ink-2: #b4bccb; --ink-3: #848ea2;
+  --line: #2a303b; --line-2: #222731; --accent: #6aaef0; --accent-ink: #0b1626; --accent-soft: #1b2b40;
+  --wa: #2fb866; --wa-ink: #08180e;
+  --good: #5cc98a; --good-soft: #15301f; --warn: #e8b547; --warn-soft: #33290f; --bad: #f2827a; --bad-soft: #3a1c1b; --info: #6aaef0; --info-soft: #1b2b40;
+  --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 4px 14px rgb(0 0 0 / .25); --shadow-up: 0 -2px 16px rgb(0 0 0 / .35);
   color-scheme: dark;
 }
-* { box-sizing: border-box; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { min-height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); -webkit-text-size-adjust: 100%; }
 [hidden] { display: none !important; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 h1, h2, h3 { font-family: var(--f-display); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
-h1 { font-size: 1.45rem; font-weight: 800; }
-h2 { font-size: 1.1rem; font-weight: 700; }
+h1 { font-size: 1.5rem; font-weight: 800; }
+h2 { font-size: 1.05rem; font-weight: 700; }
 h3 { font-size: .95rem; font-weight: 700; }
 .mono, .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
 .num { text-align: right; white-space: nowrap; }
 .muted { color: var(--ink-3); }
 .small { font-size: 13px; }
+.spec { font-style: italic; }
+a { color: var(--accent); }
 
-.wrap { max-width: 760px; margin: 0 auto; padding-inline: 16px; padding-block: 16px calc(var(--tabbar) + 32px + env(safe-area-inset-bottom, 0px)); }
-.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-.top p { margin: 2px 0 0; color: var(--ink-3); font-size: 13px; }
-.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.brand .mark { width: 30px; height: 30px; flex: none; border-radius: 8px; background: var(--accent); display: grid; place-items: center; color: var(--card); font: 800 14px var(--f-display); }
-.brand b { font-family: var(--f-display); font-size: 1rem; display: block; line-height: 1.2; overflow-wrap: anywhere; }
+/* ---------- app bar ---------- */
+.appbar { position: sticky; top: 0; z-index: 30; background: var(--bg); padding: calc(var(--sat) + 10px) 16px 10px; }
+.appbar-in { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.brand .mark { width: 36px; height: 36px; flex: none; border-radius: 10px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font: 800 14px var(--f-display); overflow: hidden; }
+.brand .mark img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+.brand b { font: 700 1rem/1.2 var(--f-display); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .brand small { color: var(--ink-3); font-size: 12px; }
-.banner { background: var(--warn-soft); color: var(--warn); border-radius: var(--r); padding: 10px 12px; font-size: 13px; margin-bottom: 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.sync-ind { font: 500 12px var(--f-body); color: var(--ink-2); background: var(--card); border: 0; border-radius: 999px; padding: 6px 10px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: var(--shadow); white-space: nowrap; }
+.sync-ind::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
+.sync-ind.err::before { background: var(--bad); }
+.sync-ind.busy::before { background: var(--warn); }
 
-/* tabs */
-.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--card); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); padding-bottom: env(safe-area-inset-bottom, 0px); }
-.tabs button { background: none; border: 0; height: var(--tabbar); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font: 500 11.5px var(--f-body); color: var(--ink-3); cursor: pointer; }
-.tabs svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.tabs button.on { color: var(--accent); font-weight: 600; }
-@media (min-width: 900px) {
-  .tabs { position: sticky; top: 0; bottom: auto; border-top: 0; border-bottom: 1px solid var(--line); padding-bottom: 0; grid-template-columns: repeat(6, auto); justify-content: center; gap: 4px; }
-  .tabs button { flex-direction: row; height: 52px; padding-inline: 16px; font-size: 14px; gap: 8px; }
-  .tabs svg { width: 18px; height: 18px; }
-  .wrap { padding-block: 22px 48px; }
-}
+.wrap { max-width: 720px; margin: 0 auto; padding-inline: 16px; padding-block: 4px calc(var(--nav) + var(--sab) + 40px); }
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 6px 0 14px; }
+.page-head p { margin: 2px 0 0; color: var(--ink-3); font-size: 13px; }
+.back { background: none; border: 0; color: var(--accent); font: 600 14px var(--f-body); padding: 4px 0; cursor: pointer; margin-bottom: 2px; }
+.banner { background: var(--warn-soft); color: var(--warn); border-radius: var(--r); padding: 10px 14px; font-size: 13px; margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
 
-/* controls */
-.btn { font: 600 14px/1 var(--f-body); border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 12px 16px; border-radius: var(--r); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; min-height: 44px; }
-.btn:hover { border-color: var(--ink-3); }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--card); }
-.btn.wa { background: var(--wa); border-color: var(--wa); color: var(--wa-ink); }
+/* ---------- bottom nav ---------- */
+.nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; background: var(--card); box-shadow: var(--shadow-up); padding-bottom: var(--sab); }
+.nav-in { max-width: 720px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); height: var(--nav); align-items: center; }
+.nav button { background: none; border: 0; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font: 500 11px var(--f-body); color: var(--ink-3); cursor: pointer; }
+.nav svg { width: 23px; height: 23px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.nav button.on { color: var(--accent); font-weight: 600; }
+.nav .plus { width: 54px; height: 54px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; margin-top: -26px; box-shadow: 0 6px 16px rgb(10 95 180 / .35); }
+.nav .plus svg { width: 26px; height: 26px; stroke-width: 2.4; }
+.nav button.new-btn { gap: 2px; }
+.nav button.new-btn.on { color: var(--accent); }
+
+/* ---------- controls ---------- */
+.btn { font: 600 14px/1 var(--f-body); border: 0; background: var(--card-2); color: var(--ink); padding: 12px 16px; border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; min-height: 46px; }
+.btn:hover { filter: brightness(.98); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.wa { background: var(--wa); color: var(--wa-ink); }
 .btn.danger { color: var(--bad); }
-.btn.ghost { border-color: transparent; background: transparent; color: var(--accent); padding-inline: 8px; }
-.btn.sm { min-height: 36px; padding: 8px 12px; font-size: 13px; }
-.btn.block { width: 100%; }
-.btn svg { width: 18px; height: 18px; fill: currentColor; }
+.btn.ghost { background: transparent; color: var(--accent); padding-inline: 6px; min-height: 36px; }
+.btn.sm { min-height: 38px; padding: 8px 12px; font-size: 13px; border-radius: 10px; }
+.btn svg { width: 18px; height: 18px; fill: currentColor; flex: none; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
 .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .btn-row > .btn { flex: 1 1 140px; }
 
 label.f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-label.f > span { font-size: 12px; font-weight: 600; color: var(--ink-2); letter-spacing: .02em; }
-input, select, textarea { font: 16px var(--f-body); color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; width: 100%; min-height: 44px; }
-input[type="number"], input[inputmode="decimal"] { font-family: var(--f-mono); }
-textarea { min-height: 70px; resize: vertical; }
-input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.invalid { border-color: var(--bad) !important; }
-.check { display: flex; align-items: center; gap: 10px; font-weight: 500; min-height: 44px; }
+label.f > span, .lbl { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+input, select, textarea { font: 16px var(--f-body); color: var(--ink); background: var(--card-2); border: 1px solid transparent; border-radius: 10px; padding: 10px 12px; width: 100%; min-height: 46px; }
+input[type="number"] { font-family: var(--f-mono); }
+textarea { min-height: 72px; resize: vertical; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); background: var(--card); box-shadow: 0 0 0 3px var(--accent-soft); }
+.invalid { border-color: var(--bad) !important; box-shadow: 0 0 0 3px var(--bad-soft) !important; }
+.check { display: flex; align-items: center; gap: 10px; font-weight: 500; min-height: 46px; }
 .check input { width: 22px; height: 22px; min-height: 0; accent-color: var(--accent); }
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .stack { display: flex; flex-direction: column; gap: 12px; }
 .full { grid-column: 1 / -1; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); background: var(--card-2); border-radius: 12px; padding: 4px; gap: 4px; }
+.seg button { background: transparent; border: 0; border-radius: 9px; min-height: 38px; font: 600 13px var(--f-body); color: var(--ink-2); cursor: pointer; }
+.seg button.on { background: var(--card); color: var(--accent); box-shadow: var(--shadow); }
 
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.card { background: var(--card); border-radius: var(--r); padding: 16px; box-shadow: var(--shadow); }
 .section { display: flex; flex-direction: column; gap: 14px; }
-.section + .section { margin-top: 14px; }
+.section + .section, .card + .card { margin-top: 12px; }
 .sec-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sec-title { display: flex; align-items: center; justify-content: space-between; margin: 20px 2px 8px; }
+.sec-title h2 { font-size: 1rem; }
 
-/* order lines */
-.line { border: 1px solid var(--line); border-radius: var(--r); padding: 12px; display: flex; flex-direction: column; gap: 10px; background: var(--card); }
-.line-head { display: flex; align-items: center; gap: 8px; }
-.line-head .n { font: 600 12px var(--f-mono); color: var(--ink-3); width: 22px; flex: none; }
-.line-head input { flex: 1; font-weight: 600; }
-.line .amt { font: 600 15px var(--f-mono); text-align: right; }
-.icon-btn { background: none; border: 0; width: 40px; height: 40px; flex: none; border-radius: 8px; color: var(--ink-3); font-size: 22px; cursor: pointer; }
-.icon-btn:hover { background: var(--line-2); color: var(--bad); }
-.add-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+/* ---------- home ---------- */
+.hello { margin: 6px 0 14px; }
+.hello h1 { font-size: 1.6rem; }
+.hello p { margin: 2px 0 0; color: var(--ink-3); font-size: 14px; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tile { background: var(--card); border-radius: var(--r); padding: 14px; box-shadow: var(--shadow); border: 0; text-align: left; cursor: pointer; color: inherit; font: inherit; display: flex; flex-direction: column; gap: 4px; min-height: 92px; }
+.tile .k { font-size: 12px; font-weight: 600; color: var(--ink-3); }
+.tile .v { font: 600 1.35rem/1.15 var(--f-mono); }
+.tile .v small { font-size: .7rem; color: var(--ink-3); font-weight: 500; }
+.tile.bad .v { color: var(--bad); }
+.tile.good .v { color: var(--good); }
+.tile.warn .v { color: var(--warn); }
+.quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.quick .btn { flex-direction: column; min-height: 76px; font-size: 12.5px; gap: 6px; background: var(--card); box-shadow: var(--shadow); }
+.quick .btn svg { width: 24px; height: 24px; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
-.totals { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; font-size: 14px; }
-.totals .num { font-size: 15px; }
-.totals .grand { font-weight: 700; font-size: 16px; border-top: 1px solid var(--line); padding-top: 8px; }
-.totals .bal { color: var(--accent); }
-
-/* lists */
-.list { display: flex; flex-direction: column; gap: 10px; }
-.row { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; cursor: pointer; text-align: left; font: inherit; color: inherit; width: 100%; }
-.row:hover { border-color: var(--ink-3); }
+/* ---------- lists ---------- */
+.list { display: flex; flex-direction: column; gap: 8px; }
+.row { background: var(--card); border: 0; border-radius: var(--r); padding: 12px 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; cursor: pointer; text-align: left; font: inherit; color: inherit; width: 100%; box-shadow: var(--shadow); }
 .row .t { font-weight: 600; overflow-wrap: anywhere; }
 .row .s { color: var(--ink-3); font-size: 13px; overflow-wrap: anywhere; }
 .row .r { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-.search { margin-bottom: 12px; }
-.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px; }
-.chip { flex: none; border: 1px solid var(--line); background: var(--card); color: var(--ink-2); border-radius: 999px; padding: 7px 12px; font: 500 13px var(--f-body); cursor: pointer; }
-.chip.on { background: var(--ink); border-color: var(--ink); color: var(--card); }
-.pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-.pill { background: var(--line-2); color: var(--ink-2); }
+.row .amt { font: 600 15px var(--f-mono); }
+.search { margin-bottom: 10px; background: var(--card); box-shadow: var(--shadow); }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 8px; margin: 0 -2px 4px; scrollbar-width: none; }
+.chip { flex: none; border: 0; background: var(--card); color: var(--ink-2); border-radius: 999px; padding: 8px 13px; font: 600 13px var(--f-body); cursor: pointer; box-shadow: var(--shadow); }
+.chip.on { background: var(--ink); color: var(--card); }
+.pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap; background: var(--line-2); color: var(--ink-2); }
 .pill.info { background: var(--info-soft); color: var(--info); }
 .pill.warn { background: var(--warn-soft); color: var(--warn); }
 .pill.good { background: var(--good-soft); color: var(--good); }
 .pill.bad { background: var(--bad-soft); color: var(--bad); }
 .pill.done { background: var(--line-2); color: var(--ink-2); }
 .pills { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
-.spec { font-style: italic; }
-.tabs button { font-size: 11px; }
-.pay-row .rno { font-family: var(--f-mono); font-size: 12px; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; }
-.receipt { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.empty { text-align: center; color: var(--ink-3); padding: 26px 12px; border-radius: var(--r); background: var(--card); box-shadow: var(--shadow); }
+.due-sum { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; background: var(--card); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; box-shadow: var(--shadow); }
+.due-sum b { font: 600 17px var(--f-mono); }
+.due-sum b.has { color: var(--bad); }
+.sum-card { background: var(--card); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; font-size: 14px; box-shadow: var(--shadow); }
+.sum-card .big { font: 600 18px var(--f-mono); color: var(--good); }
+
+/* ---------- more menu ---------- */
+.menu { background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+.menu button { width: 100%; border: 0; background: none; display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 14px; text-align: left; font: inherit; color: inherit; cursor: pointer; border-bottom: 1px solid var(--line-2); }
+.menu button:last-child { border-bottom: 0; }
+.menu .ic { width: 40px; height: 40px; border-radius: 12px; background: var(--accent-soft); display: grid; place-items: center; }
+.menu .ic svg { width: 21px; height: 21px; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.menu b { display: block; font-weight: 600; }
+.menu small { color: var(--ink-3); font-size: 12.5px; }
+.menu .chev { color: var(--ink-3); font-size: 20px; }
+
+/* ---------- order editor ---------- */
+.line { border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: var(--card-2); }
+.line input, .line select { background: var(--card); }
+.line-head { display: flex; align-items: center; gap: 8px; }
+.line-head .n { font: 600 12px var(--f-mono); color: var(--ink-3); width: 22px; flex: none; }
+.line-head input { flex: 1; font-weight: 600; }
+.line .amt { font: 600 15px var(--f-mono); text-align: right; }
+.icon-btn { background: none; border: 0; width: 40px; height: 40px; flex: none; border-radius: 10px; color: var(--ink-3); font-size: 22px; cursor: pointer; }
+.icon-btn:hover { background: var(--line-2); color: var(--bad); }
+.icon-btn:disabled { opacity: .3; cursor: not-allowed; }
+.add-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.disc-row { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 8px; align-items: end; }
+.totals { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; font-size: 14px; }
+.totals .num { font-size: 15px; }
+.totals .grand { font-weight: 700; font-size: 16px; border-top: 1px solid var(--line); padding-top: 8px; }
+.totals .bal { color: var(--accent); }
+.totals .disc { color: var(--good); }
+
+/* ---------- sheets (dialogs) ---------- */
+dialog { border: 0; padding: 0; width: min(600px, 100vw); max-height: calc(100dvh - var(--sat) - 12px); border-radius: 20px 20px 0 0; background: var(--card); color: var(--ink); box-shadow: var(--shadow-up); margin: auto auto 0; }
+dialog::backdrop { background: rgb(10 12 16 / .5); }
+@media (min-width: 700px) { dialog { border-radius: 20px; margin: auto; max-height: calc(100dvh - 48px); } }
+.dlg { display: flex; flex-direction: column; max-height: inherit; }
+.grip { width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: 8px auto 0; }
+.dlg-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 16px 8px; }
+.dlg-body { padding: 4px 16px 16px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+.dlg-body > * { flex-shrink: 0; }
+.dlg-foot { padding: 12px 16px calc(14px + var(--sab)); border-top: 1px solid var(--line-2); display: flex; flex-wrap: wrap; gap: 8px; }
+.dlg-foot > .btn { flex: 1 1 110px; }
+.close { background: var(--card-2); border: 0; font-size: 22px; line-height: 1; color: var(--ink-2); cursor: pointer; width: 36px; height: 36px; border-radius: 50%; }
+
+.acts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.acts .btn { flex-direction: column; min-height: 66px; font-size: 12px; gap: 5px; padding: 8px 6px; text-align: center; line-height: 1.2; }
+.acts .btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.acts .btn.wa svg { fill: currentColor; stroke: none; }
+.acts .btn.accent { background: var(--accent-soft); color: var(--accent); }
+
+.ticket { border-radius: var(--r); overflow: hidden; background: var(--card-2); }
+.ticket-top { padding: 12px 14px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; border-bottom: 1px dashed var(--line); }
+.ticket-top b { font-family: var(--f-mono); }
+.ticket table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ticket td { padding: 8px 14px; border-top: 1px solid var(--line-2); vertical-align: top; }
+.ticket td small { display: block; color: var(--ink-3); }
+.ticket .totals { padding: 10px 14px 14px; border-top: 1px solid var(--line); }
+.msg { font: 13.5px/1.5 var(--f-mono); min-height: 300px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: 14px; }
+.kv dt { color: var(--ink-3); }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+.pay-list { display: flex; flex-direction: column; gap: 6px; }
+.pay-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; font-size: 14px; padding: 8px 10px; background: var(--card-2); border-radius: 10px; }
+.rno { font-family: var(--f-mono); font-size: 12.5px; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; }
+.receipt { border-radius: var(--r); overflow: hidden; background: var(--card-2); }
 .receipt-top { background: var(--good-soft); color: var(--good); padding: 14px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; }
 .receipt-top b { font: 600 15px var(--f-mono); }
 .receipt-amt { padding: 16px 14px 6px; font: 600 26px var(--f-mono); }
 .receipt .kv { padding: 6px 14px 14px; }
-.sum-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; font-size: 14px; }
-.sum-card .big { font: 600 18px var(--f-mono); color: var(--good); }
 .logo-box { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.logo-box img { max-height: 56px; max-width: 160px; border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 4px; }
-.pdf-prev { border: 1px solid var(--line); border-radius: 8px; background: #fff; min-height: 160px; display: grid; place-items: center; overflow: hidden; }
+.logo-box img { max-height: 56px; max-width: 160px; border-radius: 8px; background: #fff; padding: 4px; }
+.pdf-prev { border-radius: 10px; background: #fff; min-height: 160px; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); }
 .pdf-prev img { width: 100%; display: block; }
-/* PDF page: A5 at 96 dpi = 559 px wide, 794 px tall; colours are fixed so it prints the same in dark mode */
+.st-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 6px; align-items: center; }
+.st-row .icon-btn { width: 36px; height: 36px; font-size: 16px; }
+.meter { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.meter span { display: block; height: 100%; background: var(--accent); }
+.meter.hot span { background: var(--bad); }
+.bars { display: flex; flex-direction: column; gap: 8px; }
+.bar-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; font-size: 13.5px; }
+.bar-row .bar { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--line-2); overflow: hidden; }
+.bar-row .bar span { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.rtable { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.rtable th { text-align: left; font-size: 11.5px; color: var(--ink-3); font-weight: 600; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+.rtable td { padding: 7px 4px; border-bottom: 1px solid var(--line-2); }
+.rtable tfoot td { font-weight: 700; border-bottom: 0; border-top: 1px solid var(--line); }
+.rtable .num { font-size: 13px; }
+
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--nav) + var(--sab) + 14px); background: var(--ink); color: var(--card); padding: 10px 16px; border-radius: 12px; box-shadow: var(--shadow); z-index: 60; max-width: calc(100vw - 32px); font-size: 14px; }
+@media (max-width: 380px) { .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid3 .amt-cell { grid-column: 1 / -1; } .quick .btn { font-size: 11.5px; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* ---------- PDF page: A5 at 96 dpi = 559 x 794 px; fixed print colours ---------- */
 #pdf-stage { position: fixed; left: -10000px; top: 0; width: 559px; }
 .pdoc { width: 559px; background: #ffffff; color: #15181d; font: 11px/1.45 "IBM Plex Sans", "Segoe UI", Roboto, Arial, sans-serif; padding: 30px 30px 26px; box-sizing: border-box; }
 .pdoc * { box-sizing: border-box; }
@@ -199,84 +302,41 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .pdoc .tot .g { font-weight: 800; font-size: 13px; border-top: 1px solid #15181d; padding-top: 4px; }
 .pdoc .tot .bal { color: #b3261e; }
 .pdoc .tot .ok { color: #1d7a46; }
+.pdoc .tot .disc { color: #1d7a46; }
 .pdoc .notes { margin-top: 12px; font-size: 10.5px; }
+.pdoc .bank { margin-top: 10px; font-size: 10px; color: #4a515e; }
 .pdoc .amt { text-align: center; border: 2px solid #1d7a46; border-radius: 8px; padding: 12px; margin: 6px 0 12px; }
 .pdoc .amt b { display: block; font: 700 24px "IBM Plex Mono", Menlo, monospace; color: #1d7a46; }
 .pdoc .amt span { color: #4a515e; }
 .pdoc .sign { display: flex; justify-content: space-between; gap: 20px; margin-top: 36px; font-size: 10px; color: #4a515e; }
 .pdoc .sign span { flex: 1; border-top: 1px solid #7d8594; padding-top: 4px; }
 .pdoc .pf { margin-top: 16px; padding-top: 8px; border-top: 1px solid #dde2e9; text-align: center; color: #7d8594; font-size: 9.5px; }
-.due-sum { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; }
-.due-sum b { font: 600 17px var(--f-mono); }
-.due-sum b.has { color: var(--bad); }
-.pay-list { display: flex; flex-direction: column; gap: 6px; }
-.pay-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; font-size: 14px; padding: 8px 10px; border: 1px solid var(--line-2); border-radius: 8px; }
-.seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.seg button { background: var(--card); border: 0; border-right: 1px solid var(--line); min-height: 44px; font: 500 14px var(--f-body); color: var(--ink-2); cursor: pointer; }
-.seg button:last-child { border-right: 0; }
-.seg button.on { background: var(--accent); color: var(--card); }
-.st-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 6px; align-items: center; }
-.st-row .icon-btn { width: 36px; height: 36px; font-size: 16px; }
-.icon-btn:disabled { opacity: .3; cursor: not-allowed; }
-.meter { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
-.meter span { display: block; height: 100%; background: var(--accent); }
-.meter.hot span { background: var(--bad); }
-.sync-ind { font-size: 12px; color: var(--ink-3); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; cursor: pointer; padding: 6px 0; font-family: var(--f-body); }
-.sync-ind::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
-.sync-ind.err::before { background: var(--bad); }
-.sync-ind.busy::before { background: var(--warn); }
-.empty { text-align: center; color: var(--ink-3); padding: 28px 12px; border: 1px dashed var(--line); border-radius: 12px; }
-
-/* dialog */
-dialog { border: 0; padding: 0; width: min(560px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); border-radius: 16px; background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
-dialog::backdrop { background: rgb(10 12 16 / .5); }
-.dlg { display: flex; flex-direction: column; max-height: calc(100dvh - 24px); }
-.dlg-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 16px 10px; border-bottom: 1px solid var(--line-2); }
-.dlg-body { padding: 16px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
-.dlg-body > * { flex-shrink: 0; }
-.dlg-foot { padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line-2); display: flex; flex-wrap: wrap; gap: 8px; }
-.dlg-foot > .btn { flex: 1 1 120px; }
-.close { background: none; border: 0; font-size: 26px; line-height: 1; color: var(--ink-3); cursor: pointer; width: 40px; height: 40px; border-radius: 8px; }
-
-/* job ticket preview */
-.ticket { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-.ticket-top { padding: 12px 14px; background: var(--line-2); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.ticket-top b { font-family: var(--f-mono); }
-.ticket table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.ticket td { padding: 8px 14px; border-top: 1px solid var(--line-2); vertical-align: top; }
-.ticket td small { display: block; color: var(--ink-3); }
-.ticket .totals { padding: 10px 14px 14px; border-top: 1px solid var(--line); }
-.msg { font: 13.5px/1.5 var(--f-mono); min-height: 300px; }
-.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; font-size: 14px; }
-.kv dt { color: var(--ink-3); }
-.kv dd { margin: 0; overflow-wrap: anywhere; }
-
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--tabbar) + 16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--card); padding: 10px 16px; border-radius: 10px; box-shadow: var(--shadow); z-index: 60; max-width: calc(100vw - 32px); font-size: 14px; }
-@media (min-width: 900px) { .toast { bottom: 24px; } }
-@media (max-width: 420px) { .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid3 .amt-cell { grid-column: 1 / -1; } }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+.pdoc .stamp { display: inline-block; border: 1.5px solid #0a5fb4; color: #0a5fb4; border-radius: 4px; padding: 2px 8px; font-weight: 700; font-size: 10px; letter-spacing: .06em; }
 </style>
 </head>
 <body>
-<nav class="tabs" aria-label="Sections">
-  <button data-tab="new"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New order</button>
-  <button data-tab="orders"><svg viewBox="0 0 24 24"><path d="M7 3h10l2 3v15H5V6z"/><path d="M9 10h6M9 14h6M9 18h3"/></svg>Orders</button>
-  <button data-tab="receipts"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Receipts</button>
-  <button data-tab="customers"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.5-6 8-6s7 2 8 6"/></svg>Customers</button>
-  <button data-tab="items"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg>Items</button>
-  <button data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
-</nav>
+<header class="appbar">
+  <div class="appbar-in">
+    <div class="brand"><span class="mark" id="brand-mark" aria-hidden="true">JO</span><div><b id="brand-name">Job Orders</b><small id="brand-sub">Orders · Receipts · WhatsApp</small></div></div>
+    <button type="button" id="sync-ind" class="sync-ind" data-act="sync-now" hidden></button>
+  </div>
+</header>
 
 <main class="wrap">
-  <header class="top">
-    <div class="brand"><span class="mark" aria-hidden="true">JO</span><div><b id="brand-name">Job Orders</b><small>Create · Save · Send on WhatsApp</small></div></div>
-    <button type="button" id="sync-ind" class="sync-ind" data-act="sync-now" hidden></button>
-  </header>
   <div id="banner" class="banner" hidden></div>
   <div id="view"></div>
 </main>
 
+<nav class="nav" aria-label="Sections"><div class="nav-in">
+  <button data-tab="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>Home</button>
+  <button data-tab="orders"><svg viewBox="0 0 24 24"><path d="M7 3h10l2 3v15H5V6z"/><path d="M9 10h6M9 14h6M9 18h3"/></svg>Orders</button>
+  <button data-tab="new" class="new-btn" aria-label="New order"><span class="plus"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></button>
+  <button data-tab="receipts"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Receipts</button>
+  <button data-tab="more"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</button>
+</div></nav>
+
 <dialog id="dlg"><div class="dlg">
+  <div class="grip" aria-hidden="true"></div>
   <div class="dlg-head"><h2 id="dlg-title"></h2><button type="button" class="close" data-close aria-label="Close">×</button></div>
   <div class="dlg-body" id="dlg-body"></div>
   <div class="dlg-foot" id="dlg-foot"></div>
@@ -298,13 +358,34 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   const Plug = NATIVE ? window.Capacitor.Plugins || {} : {};
   const DEFAULT_STATUSES = ["New", "Design", "Waiting approval", "Approved", "Printing", "Finishing", "Ready", "Delivered", "On hold", "Cancelled"];
   const LOCKED = ["Delivered", "Cancelled"];   // closed statuses keep their meaning, so they cannot be renamed
-  const STATUS_TONE = { New: "info", Design: "info", "Waiting approval": "warn", Approved: "info", Printing: "warn", Finishing: "warn", Ready: "good", Delivered: "done", "On hold": "bad", Cancelled: "bad" };
+  const STATUS_TONE = { New: "info", Design: "info", "Waiting approval": "warn", Approved: "info", Printing: "warn", Finishing: "warn", Ready: "good", Delivered: "done", "On hold": "bad", Cancelled: "bad", Quote: "info", Converted: "good", Declined: "done" };
   const METHODS = ["Cash", "Bank transfer", "Card / mada", "Other"];
   const UNITS = ["pcs", "box", "set", "pack", "sheet", "book", "sqm", "m", "roll", "job"];
   const TYPES = ["customers", "items", "orders"];
-  const SHARED = ["companyName", "phone", "address", "email", "logo", "footer", "vatDefault", "vatRate", "dueDays", "statuses"];
+  const SHARED = ["companyName", "phone", "address", "email", "logo", "bankName", "iban", "footer", "vatDefault", "vatRate", "dueDays", "statuses"];
   const QUOTA = 5000000; // localStorage holds about 5 million characters
   const WA_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg>';
+  const svg = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
+  const IC = {
+    phone: svg('<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>'),
+    next: svg('<path d="M5 12h14M13 6l6 6-6 6"/>'),
+    ready: svg('<path d="M20 6L9 17l-5-5"/>'),
+    bell: svg('<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/>'),
+    pdf: svg('<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4M9 13h6M9 17h4"/>'),
+    truck: svg('<path d="M3 6h11v10H3zM14 9h4l3 3v4h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>'),
+    cash: svg('<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>'),
+    quote: svg('<path d="M7 3h10l2 3v15H5V6z"/><path d="M9 11h6M9 15h4"/><path d="M15 3v3h4"/>'),
+    plus: svg('<path d="M12 5v14M5 12h14"/>'),
+    users: svg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.6-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.8c1.6.8 2.7 2.5 3 5.2"/>'),
+    box: svg('<path d="M3 7l9-4 9 4-9 4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>'),
+    chart: svg('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
+    gear: svg('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>'),
+    cloud: svg('<path d="M7 18a5 5 0 0 1-.9-9.9A6 6 0 0 1 17.6 9 4.5 4.5 0 0 1 17 18z"/><path d="M12 12v6M9.5 14.5L12 12l2.5 2.5"/>'),
+    copy: svg('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>'),
+    edit: svg('<path d="M4 20h4L19 9l-4-4L4 16z"/>'),
+    trash: svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
+    doc: svg('<path d="M6 3h12v18H6z"/><path d="M9 8h6M9 12h6M9 16h3"/>'),
+  };
 
   /* ---------- helpers ---------- */
   const $ = (s, el = document) => el.querySelector(s);
@@ -315,8 +396,10 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   function today() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
   function addDays(iso, n) { const d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
   const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   /** 2026-10-01 -> 01-Oct-26 */
   function fmtDate(iso) { if (!iso) return ""; const [y, m, d] = iso.split("-"); return `${d}-${MON[Number(m) - 1]}-${y.slice(2)}`; }
+  function fmtMonth(ym) { const [y, m] = ym.split("-"); return `${MON[Number(m) - 1]}-${y.slice(2)}`; }
   function fmtTime(iso) { const d = new Date(iso); return isNaN(d) ? "" : `${fmtDate(new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10))} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; }
   // money is kept in halalas (integer 1/100 SAR) for every calculation
   const hal = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.sign(n) * Math.round(Math.abs(n) * 100) : 0; };
@@ -331,25 +414,34 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     else if (d.length === 9 && d.startsWith("5")) d = "966" + d;
     return d.length >= 8 ? d : "";
   }
+  /** Subtotal → discount → taxable → VAT on taxable → total; then payments and balance. */
   function totals(o) {
     const sub = (o.lines || []).reduce((s, l) => s + lineHal(l.qty, l.price), 0);
+    const d = o.discount || {};
+    const dv = Number(d.value) || 0;
+    let disc = 0;
+    if (dv > 0) disc = d.type === "pct" ? Math.round((sub * Math.min(dv, 100)) / 100) : Math.min(hal(dv), sub);
+    const taxable = sub - disc;
     const rate = o.vat ? Number(o.vatRate || 15) : 0;
-    const vat = Math.round((sub * rate) / 100);
-    const total = sub + vat;
+    const vat = Math.round((taxable * rate) / 100);
+    const total = taxable + vat;
     const paid = (o.payments || []).reduce((s, p) => s + hal(p.amount), 0);
-    return { sub, rate, vat, total, paid, bal: total - paid };
+    return { sub, disc, taxable, rate, vat, total, paid, bal: total - paid };
   }
+  const discLabel = (o) => { const d = o.discount || {}; return d.type === "pct" ? `Discount ${Number(d.value)}%` : "Discount"; };
   function payState(o) {
     const t = totals(o);
     if (t.total > 0 && t.bal <= 0) return { label: "Paid", tone: "good" };
     if (t.paid > 0) return { label: "Partly paid", tone: "warn" };
     return { label: "Due", tone: "bad" };
   }
+  const isQuote = (o) => o.kind === "quote";
   const isClosed = (o) => o.status === "Delivered" || o.status === "Cancelled";
   const tone = (s) => STATUS_TONE[s] || "";
+  const dueOf = (o) => (isQuote(o) || o.status === "Cancelled" ? 0 : Math.max(totals(o).bal, 0));
 
   /* ---------- state ---------- */
-  const DEFAULT_SETTINGS = { companyName: "", phone: "", address: "", email: "", logo: "", footer: "Thank you for your order.", vatDefault: true, vatRate: 15, dueDays: "", statuses: DEFAULT_STATUSES.slice() };
+  const DEFAULT_SETTINGS = { companyName: "", phone: "", address: "", email: "", logo: "", bankName: "", iban: "", footer: "Thank you for your order.", vatDefault: true, vatRate: 15, dueDays: "", statuses: DEFAULT_STATUSES.slice() };
   let storageOk = true;
   let syncing = false, syncTimer = null;
   const retouched = new Set(); // records changed while a sync request is in flight
@@ -389,6 +481,8 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       mk(2, [L(2, 2), L(5, 12)], "Printing", -1, [[500, "Cash", 0]], "Deliver to Obhur venue."),
       mk(0, [L(1, 500)], "Waiting approval", 0, [], "Send proof before printing.", null),
     ];
+    const c = s.customers[2];
+    s.orders.push({ id: uid(), kind: "quote", no: "QT-0001", date: t, validUntil: addDays(t, 14), dueDate: "", customerId: c.id, customer: { name: c.name, phone: c.phone, company: c.company }, lines: [L(2, 4), L(0, 2000)], vat: true, vatRate: 15, discount: { type: "pct", value: 5 }, notes: "Prices include design.", status: "Quote", payments: [], createdAt: t, updatedAt: at, sample: true });
     return s;
   }
   /** Bring older saved data up to the current shape. */
@@ -416,16 +510,18 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     catch (e) { storageOk = false; }
     return sample();
   }
-  /** JO -> RCT, JO-A -> RCT-A, SHOP2 -> RCT-SHOP2 */
-  function receiptSeriesFor(series) { return /^JO(-|$)/.test(series) ? series.replace(/^JO/, "RCT") : `RCT-${series}`; }
+  /** JO -> RCT / QT, JO-A -> RCT-A / QT-A, SHOP2 -> RCT-SHOP2 */
+  function seriesFor(series, pre) { return /^JO(-|$)/.test(series) ? series.replace(/^JO/, pre) : `${pre}-${series}`; }
   function loadDevice(st) {
     let d = {};
     try { d = JSON.parse(localStorage.getItem(DKEY)) || {}; } catch (e) {}
     if (!d.id) d.id = uid();
     if (!d.series) d.series = "JO";
     if (!d.next) d.next = (st.seq || 0) + 1;
-    if (!d.rseries) d.rseries = receiptSeriesFor(d.series);
+    if (!d.rseries) d.rseries = seriesFor(d.series, "RCT");
     if (!d.rnext) d.rnext = 1;
+    if (!d.qseries) d.qseries = seriesFor(d.series, "QT");
+    if (!d.qnext) d.qnext = 1;
     if (!d.theme) d.theme = "auto";
     if (!d.sync) d.sync = { url: "", pin: "", since: 0, lastAt: "", lastMsg: "", error: "" };
     if (!Array.isArray(d.dirty)) d.dirty = [];
@@ -456,49 +552,48 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   persist();
   const live = (arr) => arr.filter((x) => !x.deleted);
   const byId = (arr, id) => arr.find((x) => x.id === id && !x.deleted);
+  const jobs = () => live(state.orders).filter((o) => !isQuote(o));
+  const quotes = () => live(state.orders).filter(isQuote);
 
-  /** Next order number for this device's series, never reusing one already saved. */
-  function nextNumber() {
-    const pre = device.series + "-";
+  /** Next number in a series, never reusing one already saved (on this or a synced device). */
+  function nextSeq(seriesKey, nextKey, nos, peek) {
+    const pre = device[seriesKey] + "-";
     let max = 0;
-    state.orders.forEach((o) => { if (o.no && o.no.startsWith(pre)) { const n = parseInt(o.no.slice(pre.length), 10); if (n > max) max = n; } });
-    const n = Math.max(device.next || 1, max + 1);
-    device.next = n + 1;
+    nos.forEach((no) => { if (no && no.startsWith(pre)) { const n = parseInt(no.slice(pre.length), 10); if (n > max) max = n; } });
+    const n = Math.max(device[nextKey] || 1, max + 1);
+    if (!peek) device[nextKey] = n + 1;
     return `${pre}${String(n).padStart(4, "0")}`;
   }
-  function receiptNos() { const out = []; state.orders.forEach((o) => (o.payments || []).forEach((p) => { if (p.no) out.push(p.no); })); return out; }
-  function nextReceipt(peek) {
-    const pre = device.rseries + "-";
-    let max = 0;
-    receiptNos().forEach((no) => { if (no.startsWith(pre)) { const n = parseInt(no.slice(pre.length), 10); if (n > max) max = n; } });
-    const n = Math.max(device.rnext || 1, max + 1);
-    if (!peek) device.rnext = n + 1;
-    return `${pre}${String(n).padStart(4, "0")}`;
-  }
-  function previewNumber() {
-    const pre = device.series + "-";
-    let max = 0;
-    state.orders.forEach((o) => { if (o.no && o.no.startsWith(pre)) { const n = parseInt(o.no.slice(pre.length), 10); if (n > max) max = n; } });
-    return `${pre}${String(Math.max(device.next || 1, max + 1)).padStart(4, "0")}`;
-  }
+  const orderNos = () => state.orders.filter((o) => !isQuote(o)).map((o) => o.no);
+  const quoteNos = () => state.orders.filter(isQuote).map((o) => o.no);
+  const receiptNos = () => { const out = []; state.orders.forEach((o) => (o.payments || []).forEach((p) => { if (p.no) out.push(p.no); })); return out; };
+  const nextNumber = (peek) => nextSeq("series", "next", orderNos(), peek);
+  const nextQuote = (peek) => nextSeq("qseries", "qnext", quoteNos(), peek);
+  const nextReceipt = (peek) => nextSeq("rseries", "rnext", receiptNos(), peek);
 
-  /* ---------- theme ---------- */
+  /* ---------- theme & status bar ---------- */
+  const darkMq = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  function isDark() { return device.theme === "dark" || (device.theme === "auto" && darkMq && darkMq.matches); }
   function applyTheme() {
     const r = document.documentElement;
     if (device.theme === "light" || device.theme === "dark") r.setAttribute("data-theme", device.theme);
     else r.removeAttribute("data-theme");
+    // DARK = light icons for a dark app; LIGHT = dark icons for a light app
+    if (NATIVE && Plug.SystemBars && Plug.SystemBars.setStyle) Plug.SystemBars.setStyle({ style: isDark() ? "DARK" : "LIGHT" }).catch(() => {});
   }
+  if (darkMq && darkMq.addEventListener) darkMq.addEventListener("change", () => { if (device.theme === "auto") applyTheme(); });
   applyTheme();
 
-  /* ---------- toast, dialog, confirm ---------- */
+  /* ---------- toast, sheet, confirm ---------- */
   let tt;
   function toast(m) { const t = $("#toast"); t.textContent = m; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => (t.hidden = true), 2800); }
   const dlg = $("#dlg");
-  let dlgCtx = null; // what the open dialog shows, so sync can refresh it
+  let dlgCtx = null; // what the open sheet shows, so sync can refresh it
   function openDlg(title, body, foot, after) {
     $("#dlg-title").textContent = title;
-    const b = $("#dlg-body"); b.oninput = b.onclick = b.onchange = null; b.innerHTML = body;
+    const b = $("#dlg-body"); b.oninput = b.onclick = b.onchange = null; b.innerHTML = body; b.scrollTop = 0;
     $("#dlg-foot").innerHTML = foot || "";
+    $("#dlg-foot").hidden = !foot;
     if (!dlg.open) dlg.showModal();
     if (after) after(b);
   }
@@ -515,9 +610,11 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   function banner() {
     const b = $("#banner");
     if (!storageOk) { b.hidden = false; b.innerHTML = "This device is out of storage space or blocking storage, so new records may not be saved. Share a backup file from Settings now."; }
-    else if (state.demo) { b.hidden = false; b.innerHTML = `<span>You are looking at <b>sample data</b>. Add your company name in Settings, then clear the samples.</span><button class="btn sm" data-tab="settings">Settings</button>`; }
+    else if (state.demo) { b.hidden = false; b.innerHTML = `<span>You are looking at <b>sample data</b>. Add your company in Settings, then clear the samples.</span><button class="btn sm" data-tab="settings">Settings</button>`; }
     else b.hidden = true;
-    $("#brand-name").textContent = state.settings.companyName || "Job Orders";
+    const s = state.settings;
+    $("#brand-name").textContent = s.companyName || "Job Orders";
+    $("#brand-mark").innerHTML = s.logo ? `<img src="${esc(s.logo)}" alt="">` : "JO";
     const si = $("#sync-ind"), sy = device.sync;
     si.hidden = !sy.url;
     if (sy.url) {
@@ -527,30 +624,81 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     }
   }
 
-  /* ---------- tabs ---------- */
-  let tab = "new";
-  try { tab = localStorage.getItem(KEY + ".tab") || "new"; } catch (e) {}
-  const filters = { status: "Open", q: "", cq: "", iq: "", rq: "", rperiod: "month" };
+  /* ---------- navigation ---------- */
+  const PAGES = ["home", "orders", "new", "receipts", "more", "customers", "items", "reports", "settings"];
+  const NAV_OF = { customers: "more", items: "more", reports: "more", settings: "more" };
+  let tab = "home";
+  try { tab = localStorage.getItem(KEY + ".tab") || "home"; } catch (e) {}
+  const filters = { view: "orders", status: "Open", qstatus: "Quote", q: "", cq: "", iq: "", rq: "", rperiod: "month", rep: "month" };
   function go(t) {
     if (t !== tab) stEdit = null;
     tab = t;
     try { localStorage.setItem(KEY + ".tab", t); } catch (e) {}
-    $$(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
+    const navKey = NAV_OF[t] || t;
+    $$(".nav button").forEach((b) => b.classList.toggle("on", b.dataset.tab === navKey));
     render();
     window.scrollTo(0, 0);
   }
   function render() { banner(); $("#view").innerHTML = views[tab](); if (tab === "new") bindEditor(); }
+  const backTo = (label = "More") => `<button class="back" data-tab="more">‹ ${label}</button>`;
+
+  /* ---------- home ---------- */
+  const views = {};
+  views.home = () => {
+    const t = today(), h = new Date().getHours();
+    const monthStart = t.slice(0, 8) + "01";
+    const js = jobs();
+    const open = js.filter((o) => !isClosed(o));
+    const dueToday = open.filter((o) => o.dueDate === t);
+    const overdue = open.filter((o) => o.dueDate && o.dueDate < t);
+    const recv = allReceipts();
+    const colToday = recv.filter((x) => x.p.date === t).reduce((s, x) => s + hal(x.p.amount), 0);
+    const colMonth = recv.filter((x) => x.p.date >= monthStart && x.p.date <= t).reduce((s, x) => s + hal(x.p.amount), 0);
+    const due = js.reduce((s, o) => s + dueOf(o), 0);
+    const urgent = overdue.concat(dueToday).sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 5);
+    const recent = js.slice().sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || "")).slice(0, 5);
+    const [y, m, d] = t.split("-");
+    return `<div class="hello"><h1>${h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"}</h1><p>${DAYS[new Date(+y, +m - 1, +d).getDay()]}, ${fmtDate(t)}</p></div>
+      <div class="tiles">
+        <button class="tile ${dueToday.length ? "warn" : ""}" data-act="go-orders" data-f="Today"><span class="k">Due today</span><span class="v">${dueToday.length}</span></button>
+        <button class="tile ${overdue.length ? "bad" : ""}" data-act="go-orders" data-f="Overdue"><span class="k">Overdue</span><span class="v">${overdue.length}</span></button>
+        <button class="tile" data-act="go-orders" data-f="Open"><span class="k">In progress</span><span class="v">${open.length}</span></button>
+        <button class="tile ${due ? "bad" : ""}" data-act="go-orders" data-f="Due"><span class="k">Due pending</span><span class="v"><small>SAR</small> ${fmt(due)}</span></button>
+        <button class="tile good" data-act="go-receipts" data-p="today"><span class="k">Collected today</span><span class="v"><small>SAR</small> ${fmt(colToday)}</span></button>
+        <button class="tile good" data-act="go-receipts" data-p="month"><span class="k">Collected this month</span><span class="v"><small>SAR</small> ${fmt(colMonth)}</span></button>
+      </div>
+      <div class="quick">
+        <button class="btn" data-act="quick-new">${IC.plus}New order</button>
+        <button class="btn" data-act="quick-quote">${IC.quote}New quotation</button>
+        <button class="btn" data-act="quick-pay">${IC.cash}Record payment</button>
+      </div>
+      <div class="sec-title"><h2>Deliver today & overdue</h2></div>
+      <div class="list">${urgent.map(orderRow).join("") || `<div class="empty">Nothing due today. 👍</div>`}</div>
+      <div class="sec-title"><h2>Recent orders</h2><button class="btn ghost sm" data-act="go-orders" data-f="All">See all</button></div>
+      <div class="list">${recent.map(orderRow).join("") || `<div class="empty">No orders yet. Tap ＋ to create your first one.</div>`}</div>`;
+  };
+  function payPicker() {
+    const list = jobs().filter((o) => dueOf(o) > 0).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+    dlgCtx = null;
+    openDlg("Record payment", `<p class="small muted" style="margin:0">Choose the order the customer is paying for.</p>
+      <input type="search" id="pp-q" placeholder="Search order or customer" autocomplete="off">
+      <div class="list" id="pp-list">${list.map((o) => `<button class="row" data-act="add-payment" data-id="${o.id}" data-q="${esc([o.no, o.customer.name, o.customer.company].join(" ").toLowerCase())}"><span><span class="t"><span class="mono">${esc(o.no)}</span> · ${esc(o.customer.name)}</span><br><span class="s">${fmtDate(o.date)}</span></span><span class="r"><span class="amt" style="color:var(--bad)">${fmt(dueOf(o))}</span><span class="s">due</span></span></button>`).join("") || `<div class="empty">No orders with a balance due.</div>`}</div>`, "",
+      (b) => { b.oninput = (e) => { if (e.target.id !== "pp-q") return; const q = e.target.value.toLowerCase(); $$("#pp-list .row", b).forEach((r) => (r.hidden = !r.dataset.q.includes(q))); }; });
+  }
 
   /* ---------- order editor ---------- */
   let draft = null;
   function newDraft(preset = {}) {
     const dd = state.settings.dueDays;
-    return { id: null, customerId: "", lines: [], vat: !!state.settings.vatDefault, vatRate: state.settings.vatRate || 15, paidNow: "", payMethod: "Cash", notes: "", date: today(), dueDate: dd === "" || dd === null || dd === undefined ? "" : addDays(today(), Number(dd) || 0), ...preset };
+    return { id: null, kind: "order", customerId: "", lines: [], vat: !!state.settings.vatDefault, vatRate: state.settings.vatRate || 15, discType: "amt", discVal: "", paidNow: "", payMethod: "Cash", notes: "", date: today(), validUntil: addDays(today(), 14), dueDate: dd === "" || dd === null || dd === undefined ? "" : addDays(today(), Number(dd) || 0), ...preset };
   }
   try { draft = JSON.parse(localStorage.getItem(KEY + ".draft")) || null; } catch (e) {}
   if (!draft) draft = newDraft();
   if (draft.advance !== undefined) { draft.paidNow = draft.advance; delete draft.advance; }
+  if (!draft.kind) draft.kind = "order";
+  if (!draft.discType) draft.discType = "amt";
   function keepDraft() { try { localStorage.setItem(KEY + ".draft", JSON.stringify(draft)); } catch (e) {} }
+  const draftOrder = (d) => ({ ...d, discount: { type: d.discType, value: d.discVal } });
 
   function lineCard(l, i) {
     return `<div class="line" data-i="${i}">
@@ -569,49 +717,52 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     const t = totals(o);
     const paid = t.paid + extraPaid, bal = t.total - paid;
     return `<span>Subtotal</span><span class="num">${fmt(t.sub)}</span>
+      ${t.disc ? `<span class="disc">${esc(discLabel(o))}</span><span class="num disc">−${fmt(t.disc)}</span>` : ""}
       ${o.vat ? `<span>VAT ${t.rate}%</span><span class="num">${fmt(t.vat)}</span>` : ""}
       <span class="grand">Total</span><span class="num grand">${sar(t.total)}</span>
       ${paid ? `<span>Paid</span><span class="num">−${fmt(paid)}</span><span class="grand bal">${bal <= 0 ? "Fully paid" : "Balance due"}</span><span class="num grand bal">${sar(Math.max(bal, 0))}</span>` : ""}`;
   }
-
-  const views = {};
   views.new = () => {
     const d = draft;
     const editing = d.id && byId(state.orders, d.id);
+    const q = d.kind === "quote";
     const custOpts = live(state.customers).sort((a, b) => a.name.localeCompare(b.name))
       .map((c) => `<option value="${c.id}" ${c.id === d.customerId ? "selected" : ""}>${esc(c.name)}${c.company ? " — " + esc(c.company) : ""}</option>`).join("");
     const itemOpts = live(state.items).sort((a, b) => a.name.localeCompare(b.name))
       .map((it) => `<option value="${it.id}">${esc(it.name)} · ${fmt(hal(it.price))}/${esc(it.unit)}</option>`).join("");
-    const extra = editing ? 0 : hal(d.paidNow);
+    const extra = editing || q ? 0 : hal(d.paidNow);
     return `
-      <div class="top" style="margin-top:-4px"><div><h1>${editing ? `Edit ${esc(editing.no)}` : "New job order"}</h1><p>${editing ? "Change the order and save it again." : `Next number on this device: <span class="mono">${esc(previewNumber())}</span>`}</p></div>
+      <div class="page-head"><div><h1>${editing ? `Edit ${esc(editing.no)}` : q ? "New quotation" : "New job order"}</h1><p>${editing ? "Change it and save again." : `Number: <span class="mono">${esc(q ? nextQuote(true) : nextNumber(true))}</span>`}</p></div>
         ${d.lines.length || d.customerId ? `<button class="btn ghost sm" data-act="clear-draft">${editing ? "Cancel" : "Clear"}</button>` : ""}</div>
+      ${editing ? "" : `<div class="seg" style="margin-bottom:12px"><button type="button" data-act="draft-kind" data-k="order" class="${q ? "" : "on"}">Job order</button><button type="button" data-act="draft-kind" data-k="quote" class="${q ? "on" : ""}">Quotation</button></div>`}
       <section class="card section">
-        <div class="sec-head"><h2>Customer</h2><button class="btn ghost sm" data-act="new-customer" data-for="draft">+ New customer</button></div>
+        <div class="sec-head"><h2>Customer</h2><button class="btn ghost sm" data-act="new-customer" data-for="draft">+ New</button></div>
         <select id="d-customer" aria-label="Customer"><option value="">Select a customer…</option>${custOpts}</select>
         <div id="d-cust-info" class="small muted"></div>
       </section>
       <section class="card section">
         <div class="sec-head"><h2>Items</h2><button class="btn ghost sm" data-act="add-custom">+ Custom item</button></div>
         <div class="add-row"><select id="d-additem" aria-label="Add a saved item"><option value="">Add a saved item…</option>${itemOpts}</select><button class="btn primary" data-act="add-item">Add</button></div>
-        <div id="d-lines" class="stack">${d.lines.length ? d.lines.map(lineCard).join("") : `<div class="empty">No items yet. Choose a saved item above or add a custom one.</div>`}</div>
+        <div id="d-lines" class="stack">${d.lines.length ? d.lines.map(lineCard).join("") : `<p class="small muted" style="margin:0;text-align:center">No items yet. Pick a saved item above or add a custom one.</p>`}</div>
       </section>
       <section class="card section">
-        <h2>Order details</h2>
+        <h2>${q ? "Quotation details" : "Order details"}</h2>
         <div class="grid2">
-          <label class="f"><span>Order date</span><input id="d-date" type="date" value="${esc(d.date)}"></label>
-          <label class="f"><span>Delivery date (optional)</span><input id="d-due" type="date" value="${esc(d.dueDate)}"></label>
-          ${editing ? `<p class="small muted full" style="margin:0">Payments for this order are recorded from the order screen (Orders → tap the order).</p>` : `
-          <label class="f"><span>Paid now, SAR (optional)</span><input id="d-paid" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(d.paidNow)}" placeholder="0.00"></label>
+          <label class="f"><span>${q ? "Quote date" : "Order date"}</span><input id="d-date" type="date" value="${esc(d.date)}"></label>
+          ${q ? `<label class="f"><span>Valid until</span><input id="d-valid" type="date" value="${esc(d.validUntil)}"></label>` : `<label class="f"><span>Delivery date (optional)</span><input id="d-due" type="date" value="${esc(d.dueDate)}"></label>`}
+          <div class="full disc-row"><label class="f"><span>Discount (optional)</span><input id="d-disc" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(d.discVal)}" placeholder="0"></label>
+            <div class="seg" id="d-disc-type"><button type="button" data-dt="amt" class="${d.discType === "pct" ? "" : "on"}">SAR</button><button type="button" data-dt="pct" class="${d.discType === "pct" ? "on" : ""}">%</button></div></div>
+          ${editing || q ? "" : `
+          <label class="f"><span>Paid now (optional)</span><input id="d-paid" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(d.paidNow)}" placeholder="0.00"></label>
           <label class="f"><span>Paid by</span><select id="d-method">${METHODS.map((m) => `<option ${m === d.payMethod ? "selected" : ""}>${m}</option>`).join("")}</select></label>`}
           <label class="check full"><input id="d-vat" type="checkbox" ${d.vat ? "checked" : ""}> Add VAT ${esc(d.vatRate)}%</label>
           <label class="f full"><span>Notes</span><textarea id="d-notes" placeholder="Artwork, delivery address, special instructions">${esc(d.notes)}</textarea></label>
         </div>
-        <div class="totals" id="d-totals">${totalsHtml(d, extra)}</div>
+        <div class="totals" id="d-totals">${totalsHtml(editing ? { ...draftOrder(d), payments: editing.payments } : draftOrder(d), extra)}</div>
       </section>
       <div class="btn-row" style="margin-top:14px">
-        <button class="btn" data-act="save-order">${editing ? "Save changes" : "Save order"}</button>
-        <button class="btn wa" data-act="save-share">${WA_ICON} Save &amp; send on WhatsApp</button>
+        <button class="btn" data-act="save-order">${editing ? "Save changes" : "Save"}</button>
+        <button class="btn wa" data-act="save-share">${WA_ICON} Save &amp; send</button>
       </div>`;
   };
   function custInfo() {
@@ -624,8 +775,10 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     if (!$("#d-customer", v)) return;
     draft.customerId = $("#d-customer", v).value;
     draft.date = $("#d-date", v).value;
-    draft.dueDate = $("#d-due", v).value;
+    if ($("#d-due", v)) draft.dueDate = $("#d-due", v).value;
+    if ($("#d-valid", v)) draft.validUntil = $("#d-valid", v).value;
     if ($("#d-paid", v)) { draft.paidNow = $("#d-paid", v).value; draft.payMethod = $("#d-method", v).value; }
+    draft.discVal = $("#d-disc", v).value;
     draft.vat = $("#d-vat", v).checked;
     draft.notes = $("#d-notes", v).value;
     $$(".line", v).forEach((el) => {
@@ -633,16 +786,20 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       $$("[data-k]", el).forEach((inp) => { l[inp.dataset.k] = inp.value; });
     });
   }
+  function refreshTotals() {
+    const v = $("#view");
+    const editing = draft.id && byId(state.orders, draft.id);
+    $("#d-totals", v).innerHTML = totalsHtml(editing ? { ...draftOrder(draft), payments: editing.payments } : draftOrder(draft), editing || draft.kind === "quote" ? 0 : hal(draft.paidNow));
+  }
   function bindEditor() {
     const v = $("#view");
     custInfo();
     v.oninput = v.onchange = (e) => {
-      if (tab !== "new" || !e.target.closest("#d-customer, #d-date, #d-due, #d-paid, #d-method, #d-vat, #d-notes, .line")) return;
+      if (tab !== "new" || !e.target.closest("#d-customer, #d-date, #d-due, #d-valid, #d-disc, #d-paid, #d-method, #d-vat, #d-notes, .line")) return;
       e.target.classList.remove("invalid");
       readDraft();
       $$("[data-amt]", v).forEach((el) => { const l = draft.lines[Number(el.dataset.amt)]; el.textContent = sar(lineHal(l.qty, l.price)); });
-      const editing = draft.id && byId(state.orders, draft.id);
-      $("#d-totals", v).innerHTML = totalsHtml(editing ? { ...draft, payments: editing.payments } : draft, editing ? 0 : hal(draft.paidNow));
+      refreshTotals();
       custInfo();
       keepDraft();
     };
@@ -658,14 +815,18 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       if (!(Number(l.qty) > 0)) { $('[data-k="qty"]', el).classList.add("invalid"); $('[data-k="qty"]', el).focus(); return `Item ${i + 1} needs a quantity above zero.`; }
       if (Number(l.price) < 0) { $('[data-k="price"]', el).classList.add("invalid"); return `Item ${i + 1} has a negative price.`; }
     }
-    if (draft.dueDate && draft.date && draft.dueDate < draft.date) { $("#d-due", v).classList.add("invalid"); return "Delivery date is before the order date."; }
+    const dv = Number(draft.discVal) || 0;
+    if (dv < 0) { $("#d-disc", v).classList.add("invalid"); return "Discount cannot be negative."; }
+    if (draft.discType === "pct" && dv > 100) { $("#d-disc", v).classList.add("invalid"); return "Discount cannot be more than 100%."; }
     const editing = draft.id && byId(state.orders, draft.id);
-    const t = totals(editing ? { ...draft, payments: editing.payments } : draft);
+    const t = totals(editing ? { ...draftOrder(draft), payments: editing.payments } : draftOrder(draft));
+    if (draft.discType !== "pct" && hal(dv) > t.sub) { $("#d-disc", v).classList.add("invalid"); return `Discount is more than the subtotal of ${sar(t.sub)}.`; }
+    if (draft.kind !== "quote" && draft.dueDate && draft.date && draft.dueDate < draft.date) { $("#d-due", v).classList.add("invalid"); return "Delivery date is before the order date."; }
     if (editing && t.paid > t.total) return `Payments received (${sar(t.paid)}) are more than the new total of ${sar(t.total)}. Remove a payment first.`;
-    if (!editing) {
+    if (!editing && draft.kind !== "quote") {
       const p = hal(draft.paidNow);
       if (p < 0) return "Paid amount cannot be negative.";
-      if (p > t.total) { $("#d-paid", v).classList.add("invalid"); return `Paid amount is more than the order total of ${sar(t.total)}.`; }
+      if (p > t.total) { $("#d-paid", v).classList.add("invalid"); return `Paid amount is more than the total of ${sar(t.total)}.`; }
     }
     return "";
   }
@@ -673,14 +834,21 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     const err = validateDraft();
     if (err) { toast(err); return null; }
     const c = byId(state.customers, draft.customerId);
+    const q = draft.kind === "quote";
+    const dv = Number(draft.discVal) || 0;
     const clean = {
       customerId: c.id, customer: { name: c.name, phone: c.phone, company: c.company },
-      date: draft.date || today(), dueDate: draft.dueDate || "", vat: draft.vat, vatRate: draft.vatRate, notes: draft.notes.trim(),
+      date: draft.date || today(), vat: draft.vat, vatRate: draft.vatRate, notes: draft.notes.trim(),
+      discount: dv > 0 ? { type: draft.discType === "pct" ? "pct" : "amt", value: draft.discType === "pct" ? dv : hal(dv) / 100 } : null,
       lines: draft.lines.map((l) => ({ name: String(l.name).trim(), spec: String(l.spec || "").trim(), unit: l.unit || "pcs", qty: Number(l.qty), price: hal(l.price) / 100, note: String(l.note || "").trim() })),
     };
+    if (q) { clean.validUntil = draft.validUntil || ""; clean.dueDate = ""; } else clean.dueDate = draft.dueDate || "";
     let o = draft.id && byId(state.orders, draft.id);
     if (o) Object.assign(o, clean);
-    else {
+    else if (q) {
+      o = { id: uid(), kind: "quote", no: nextQuote(), status: "Quote", createdAt: today(), payments: [], device: device.id, ...clean };
+      state.orders.push(o);
+    } else {
       o = { id: uid(), no: nextNumber(), status: state.settings.statuses[0] || "New", createdAt: today(), payments: [], device: device.id, ...clean };
       const p = hal(draft.paidNow);
       if (p > 0) o.payments.push({ id: uid(), no: nextReceipt(), date: o.date, amount: p / 100, method: draft.payMethod || "Cash", note: "" });
@@ -693,12 +861,16 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     return o;
   }
 
-  /* ---------- WhatsApp message ---------- */
+  /* ---------- WhatsApp messages ---------- */
   const italic = (t) => (t.includes("_") ? t : `_${t}_`);
+  const sign = () => { const s = state.settings; return s.companyName ? `— ${s.companyName}${s.phone ? " · " + s.phone : ""}` : ""; };
+  const bankLines = () => { const s = state.settings; return s.iban ? [`Bank transfer: ${s.bankName ? s.bankName + " · " : ""}IBAN ${s.iban}`] : []; };
   function message(o) {
-    const s = state.settings, t = totals(o);
-    const out = [`*Job Order ${o.no}*`, `Date: ${fmtDate(o.date)}${o.dueDate ? ` · Delivery: ${fmtDate(o.dueDate)}` : ""}`, `Customer: ${o.customer.name}${o.customer.company ? ` (${o.customer.company})` : ""}`];
-    if (o.status && o.status !== s.statuses[0]) out.push(`Status: *${o.status}*`);
+    const s = state.settings, t = totals(o), q = isQuote(o);
+    const out = [`*${q ? "Quotation" : "Job Order"} ${o.no}*`,
+      q ? `Date: ${fmtDate(o.date)}${o.validUntil ? ` · Valid until: ${fmtDate(o.validUntil)}` : ""}` : `Date: ${fmtDate(o.date)}${o.dueDate ? ` · Delivery: ${fmtDate(o.dueDate)}` : ""}`,
+      `Customer: ${o.customer.name}${o.customer.company ? ` (${o.customer.company})` : ""}`];
+    if (!q && o.status && o.status !== s.statuses[0]) out.push(`Status: *${o.status}*`);
     out.push("");
     o.lines.forEach((l, i) => {
       out.push(`${i + 1}. *${l.name}*`);
@@ -707,23 +879,37 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       if (l.note) out.push(`   Note: ${l.note}`);
     });
     out.push("", `Subtotal: ${sar(t.sub)}`);
+    if (t.disc) out.push(`${discLabel(o)}: −${sar(t.disc)}`);
     if (o.vat) out.push(`VAT ${t.rate}%: ${sar(t.vat)}`);
     out.push(`*Total: ${sar(t.total)}*`);
-    if (t.paid) out.push(`Paid: ${sar(t.paid)}`, t.bal <= 0 ? "*Fully paid* ✓" : `*Balance due: ${sar(t.bal)}*`);
+    if (!q && t.paid) out.push(`Paid: ${sar(t.paid)}`, t.bal <= 0 ? "*Fully paid* ✓" : `*Balance due: ${sar(t.bal)}*`);
     if (o.notes) out.push("", `Notes: ${o.notes}`);
     if (s.footer) out.push("", s.footer);
-    if (s.companyName) out.push(`— ${s.companyName}${s.phone ? " · " + s.phone : ""}`);
+    if (sign()) out.push(sign());
     return out.join("\n");
   }
-  function shareDlg(o, back) { shareText(`Send ${o.no}`, message(o), o.customer.phone, back ? `data-act="share-back" data-id="${o.id}"` : ""); }
+  function readyMessage(o) {
+    const t = totals(o);
+    return [`Hello ${o.customer.name},`, "", `Your order *${o.no}* is ready for pickup. ✓`, t.bal > 0 ? `Balance due: *${sar(t.bal)}*` : "It is fully paid.", "", "Thank you!", sign()].filter((x) => x !== "" || true).join("\n").trim();
+  }
+  function orderReminder(o) {
+    const t = totals(o);
+    return [`Dear ${o.customer.name},`, "", `A friendly reminder that a balance of *${sar(t.bal)}* is due for job order *${o.no}* dated ${fmtDate(o.date)}.`, `Order total ${sar(t.total)} · paid ${sar(t.paid)}.`, ...bankLines().map((x) => "\n" + x), "", "Thank you.", sign()].join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  }
+  function customerReminder(c) {
+    const list = jobs().filter((o) => o.customerId === c.id && dueOf(o) > 0).sort((a, b) => a.date.localeCompare(b.date));
+    const total = list.reduce((s, o) => s + dueOf(o), 0);
+    return [`Dear ${c.name},`, "", "A friendly reminder of the balance on your account:", ...list.map((o) => `• ${o.no} dated ${fmtDate(o.date)}: ${sar(dueOf(o))}`), "", `*Total due: ${sar(total)}*`, ...bankLines().map((x) => "\n" + x), "", "Thank you.", sign()].join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  }
+  function shareDlg(o, back) { shareText(`Send ${o.no}`, message(o), o.customer.phone, back ? `data-act="open-order" data-id="${o.id}"` : ""); }
   function shareText(title, text, phone, backAttrs) {
     const num = waPhone(phone);
     const link = (txt) => `https://wa.me/${num}?text=${encodeURIComponent(txt)}`;
     dlgCtx = null;
     openDlg(title, `
-      <label class="f"><span>Message. You can edit it before sending.</span><textarea id="msg" class="msg" rows="16">${esc(text)}</textarea></label>
-      <p class="small muted" style="margin:0">${num ? `Open WhatsApp starts a chat with <span class="mono">+${num}</span>.` : "This customer has no phone number saved, so WhatsApp will ask you to choose a contact."} Words between _underscores_ show in italics in WhatsApp.</p>`,
-      `${backAttrs ? `<button class="btn" ${backAttrs}>Back</button>` : ""}<button class="btn" data-act="copy-msg">Copy text</button>${NATIVE && Plug.Share ? `<button class="btn" data-act="share-other">Other apps</button>` : ""}<a class="btn wa" id="wa-link" href="${esc(link(text))}" target="_blank" rel="noopener">${WA_ICON} Open WhatsApp</a>`,
+      <label class="f"><span>Message. You can edit it before sending.</span><textarea id="msg" class="msg" rows="14">${esc(text)}</textarea></label>
+      <p class="small muted" style="margin:0">${num ? `Open WhatsApp starts a chat with <span class="mono">+${num}</span>.` : "No phone number is saved, so WhatsApp will ask you to choose a contact."} Text between _underscores_ shows in italics.</p>`,
+      `${backAttrs ? `<button class="btn" ${backAttrs}>Back</button>` : ""}<button class="btn" data-act="copy-msg">Copy</button>${NATIVE && Plug.Share ? `<button class="btn" data-act="share-other">Other apps</button>` : ""}<a class="btn wa" id="wa-link" href="${esc(link(text))}" target="_blank" rel="noopener">${WA_ICON} WhatsApp</a>`,
       (b) => { b.oninput = () => { $("#wa-link").href = link($("#msg").value); }; });
   }
   async function copy(text) {
@@ -731,83 +917,130 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     try { await navigator.clipboard.writeText(text); return true; }
     catch (e) { const ta = $("#msg"); if (ta) { ta.focus(); ta.select(); try { return document.execCommand("copy"); } catch (_) { return false; } } return false; }
   }
+  /** Open the phone dialer or WhatsApp chat; Android hands these links to the right app. */
+  function openExternal(url) { if (NATIVE) window.location.href = url; else window.open(url, "_blank", "noopener"); }
 
-  /* ---------- orders ---------- */
-  function statusChips(list) {
-    const all = live(state.orders);
-    const cnt = (f) => all.filter(f).length;
-    const chips = [
-      ["Open", "Open", cnt((o) => !isClosed(o))],
-      ["Due", "Due pending", cnt((o) => totals(o).bal > 0 && o.status !== "Cancelled")],
-      ["Paid", "Paid", cnt((o) => payState(o).label === "Paid")],
-      ...state.settings.statuses.map((s) => [s, s, cnt((o) => o.status === s)]).filter(([, , n]) => n),
-      ["All", "All", all.length],
-    ];
-    void list;
-    return chips.map(([k, l, n]) => `<button class="chip ${filters.status === k ? "on" : ""}" data-status-filter="${esc(k)}">${esc(l)} ${n}</button>`).join("");
+  /* ---------- orders & quotations ---------- */
+  function orderFilter(o, f, t) {
+    if (f === "Open") return !isClosed(o);
+    if (f === "Today") return !isClosed(o) && o.dueDate === t;
+    if (f === "Overdue") return !isClosed(o) && o.dueDate && o.dueDate < t;
+    if (f === "Due") return dueOf(o) > 0;
+    if (f === "Paid") return payState(o).label === "Paid";
+    if (f === "All") return true;
+    return o.status === f;
   }
   views.orders = () => {
-    const q = filters.q.toLowerCase();
-    const f = filters.status;
-    let list = live(state.orders).sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.no.localeCompare(a.no));
-    if (f === "Open") list = list.filter((o) => !isClosed(o));
-    else if (f === "Due") list = list.filter((o) => totals(o).bal > 0 && o.status !== "Cancelled");
-    else if (f === "Paid") list = list.filter((o) => payState(o).label === "Paid");
-    else if (f !== "All") list = list.filter((o) => o.status === f);
+    const qv = filters.view === "quotes";
+    const q = filters.q.toLowerCase(), t = today();
+    const base = qv ? quotes() : jobs();
+    const f = qv ? filters.qstatus : filters.status;
+    let list = base.filter((o) => (qv ? f === "All" || o.status === f : orderFilter(o, f, t)));
+    list.sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.no.localeCompare(a.no));
     if (q) list = list.filter((o) => [o.no, o.customer.name, o.customer.company, o.customer.phone, ...o.lines.map((l) => l.name)].join(" ").toLowerCase().includes(q));
-    const dueAll = live(state.orders).filter((o) => o.status !== "Cancelled").reduce((s, o) => s + Math.max(totals(o).bal, 0), 0);
-    const shown = list.length > 300 ? list.slice(0, 300) : list;
-    return `<div class="top"><div><h1>Orders</h1><p>${live(state.orders).length} saved. Tap an order to send it, take payment or change its status.</p></div></div>
-      <div class="due-sum"><span>Total due pending</span><b class="${dueAll ? "has" : ""}">${sar(dueAll)}</b></div>
-      <input type="search" id="o-search" class="search" placeholder="Search order no., customer, item" value="${esc(filters.q)}">
-      <div class="chips">${statusChips()}</div>
-      <div class="list">${shown.map(orderRow).join("") || `<div class="empty">No orders here.</div>`}</div>
-      ${list.length > shown.length ? `<p class="small muted" style="text-align:center">Showing the latest 300 of ${list.length}. Search to find older orders.</p>` : ""}`;
+    const cnt = (fn) => base.filter(fn).length;
+    const chips = qv
+      ? [["Quote", "Open"], ["Converted", "Converted"], ["Declined", "Declined"], ["All", "All"]].map(([k, l]) => [k, l, cnt((o) => k === "All" || o.status === k)])
+      : [["Open", "Open"], ["Today", "Due today"], ["Overdue", "Overdue"], ["Due", "Due pending"], ["Paid", "Paid"], ...state.settings.statuses.map((s) => [s, s]), ["All", "All"]]
+          .map(([k, l]) => [k, l, cnt((o) => orderFilter(o, k, t))]).filter(([k, , n]) => n || ["Open", "All", "Due"].includes(k));
+    const dueAll = jobs().reduce((s, o) => s + dueOf(o), 0);
+    const shown = list.slice(0, 300);
+    return `<div class="page-head"><div><h1>${qv ? "Quotations" : "Orders"}</h1><p>${base.length} saved</p></div></div>
+      <div class="seg" style="margin-bottom:12px"><button type="button" data-act="orders-view" data-v="orders" class="${qv ? "" : "on"}">Job orders</button><button type="button" data-act="orders-view" data-v="quotes" class="${qv ? "on" : ""}">Quotations</button></div>
+      ${qv ? "" : `<div class="due-sum"><span>Total due pending</span><b class="${dueAll ? "has" : ""}">${sar(dueAll)}</b></div>`}
+      <input type="search" id="o-search" class="search" placeholder="Search number, customer, item" value="${esc(filters.q)}">
+      <div class="chips">${chips.map(([k, l, n]) => `<button class="chip ${f === k ? "on" : ""}" data-status-filter="${esc(k)}">${esc(l)} ${n}</button>`).join("")}</div>
+      <div class="list">${shown.map(orderRow).join("") || `<div class="empty">${qv ? "No quotations here. Tap ＋ and choose Quotation." : "No orders here."}</div>`}</div>
+      ${list.length > shown.length ? `<p class="small muted" style="text-align:center">Showing the latest 300 of ${list.length}. Search to find older ones.</p>` : ""}`;
   };
   function orderRow(o) {
-    const t = totals(o), ps = payState(o);
+    const t = totals(o), ps = payState(o), q = isQuote(o), td = today();
+    const late = !q && !isClosed(o) && o.dueDate && o.dueDate < td;
+    const when = q ? (o.validUntil ? `Valid until ${fmtDate(o.validUntil)}` : fmtDate(o.date)) : o.dueDate ? `${late ? "⚠ Overdue · " : o.dueDate === td && !isClosed(o) ? "Due today · " : ""}Delivery ${fmtDate(o.dueDate)}` : fmtDate(o.date);
     return `<button class="row" data-act="open-order" data-id="${o.id}">
-      <span><span class="t"><span class="mono">${esc(o.no)}</span> · ${esc(o.customer.name)}</span><br><span class="s">${esc(o.lines.map((l) => l.name).join(", "))}</span><br><span class="s">${fmtDate(o.date)}${o.dueDate ? ` · Delivery ${fmtDate(o.dueDate)}` : " · No delivery date"}</span></span>
-      <span class="r"><span class="pills"><span class="pill ${tone(o.status)}">${esc(o.status)}</span></span><span class="mono">${fmt(t.total)}</span><span class="pill ${ps.tone}">${ps.label}${ps.label === "Partly paid" ? ` · ${fmt(t.bal)}` : ""}</span></span></button>`;
+      <span><span class="t"><span class="mono">${esc(o.no)}</span> · ${esc(o.customer.name)}</span><br><span class="s">${esc(o.lines.map((l) => l.name).join(", "))}</span><br><span class="s" style="${late ? "color:var(--bad)" : ""}">${when}</span></span>
+      <span class="r"><span class="amt">${fmt(t.total)}</span><span class="pills"><span class="pill ${tone(o.status)}">${esc(o.status)}</span>${q || o.status === "Cancelled" ? "" : `<span class="pill ${ps.tone}">${ps.label}</span>`}</span></span></button>`;
+  }
+  function nextStatus(o) {
+    const st = state.settings.statuses, i = st.indexOf(o.status);
+    if (isClosed(o)) return "";
+    for (let j = i + 1; j < st.length; j++) if (st[j] !== "On hold" && st[j] !== "Cancelled") return st[j];
+    return "";
+  }
+  function ticketHtml(o) {
+    return `<div class="ticket">
+      <div class="ticket-top"><span><b>${esc(o.no)}</b><br><span class="small muted">${fmtDate(o.date)}${isQuote(o) ? (o.validUntil ? ` · valid until ${fmtDate(o.validUntil)}` : "") : o.dueDate ? ` · delivery ${fmtDate(o.dueDate)}` : ""}</span></span><span style="text-align:right"><b style="font-family:var(--f-body)">${esc(o.customer.name)}</b><br><span class="small muted">${esc([o.customer.company, o.customer.phone].filter(Boolean).join(" · "))}</span></span></div>
+      <table><tbody>${o.lines.map((l, i) => `<tr><td>${i + 1}. <b>${esc(l.name)}</b>${l.spec ? `<small class="spec">${esc(l.spec)}</small>` : ""}${l.note ? `<small>Note: ${esc(l.note)}</small>` : ""}<small class="mono">${qtyFmt(l.qty)} ${esc(l.unit)} × ${fmt(hal(l.price))}</small></td><td class="num">${fmt(lineHal(l.qty, l.price))}</td></tr>`).join("")}</tbody></table>
+      <div class="totals">${totalsHtml(o)}</div>
+    </div>${o.notes ? `<p style="margin:0"><b>Notes:</b> ${esc(o.notes)}</p>` : ""}`;
   }
   function openOrder(o) {
     if (!o) return closeDlg();
-    const t = totals(o), ps = payState(o);
+    if (isQuote(o)) return openQuote(o);
+    const t = totals(o), ps = payState(o), nx = nextStatus(o);
     const statuses = state.settings.statuses.includes(o.status) ? state.settings.statuses : state.settings.statuses.concat(o.status);
-    openDlg(o.no, `
-      <div class="ticket">
-        <div class="ticket-top"><span><b>${esc(o.no)}</b><br><span class="small muted">${fmtDate(o.date)}${o.dueDate ? ` · Delivery ${fmtDate(o.dueDate)}` : ""}</span></span><span style="text-align:right"><b style="font-family:var(--f-body)">${esc(o.customer.name)}</b><br><span class="small muted">${esc([o.customer.company, o.customer.phone].filter(Boolean).join(" · "))}</span></span></div>
-        <table><tbody>${o.lines.map((l, i) => `<tr><td>${i + 1}. <b>${esc(l.name)}</b>${l.spec ? `<small class="spec">${esc(l.spec)}</small>` : ""}${l.note ? `<small>Note: ${esc(l.note)}</small>` : ""}<small class="mono">${qtyFmt(l.qty)} ${esc(l.unit)} × ${fmt(hal(l.price))}</small></td><td class="num">${fmt(lineHal(l.qty, l.price))}</td></tr>`).join("")}</tbody></table>
-        <div class="totals">${totalsHtml(o)}</div>
+    const phone = waPhone(o.customer.phone);
+    openDlg(`${o.no}`, `${ticketHtml(o)}
+      <div class="acts">
+        ${nx ? `<button class="btn accent" data-act="next-status" data-id="${o.id}">${IC.next}${esc(nx)}</button>` : ""}
+        ${o.status !== "Delivered" && o.status !== "Cancelled" ? `<button class="btn" data-act="ready-msg" data-id="${o.id}">${IC.ready}Ready message</button>` : ""}
+        ${t.bal > 0 && o.status !== "Cancelled" ? `<button class="btn" data-act="order-reminder" data-id="${o.id}">${IC.bell}Reminder</button>` : ""}
+        ${phone ? `<button class="btn" data-act="call" data-phone="${esc(o.customer.phone)}">${IC.phone}Call</button>` : ""}
+        ${PDF_OK ? `<button class="btn" data-act="pdf-order" data-id="${o.id}">${IC.pdf}PDF</button><button class="btn" data-act="pdf-dn" data-id="${o.id}">${IC.truck}Delivery note</button>` : ""}
       </div>
-      ${o.notes ? `<p style="margin:0"><b>Notes:</b> ${esc(o.notes)}</p>` : ""}
       <label class="f"><span>Status</span><select id="o-status" data-id="${o.id}">${statuses.map((s) => `<option ${s === o.status ? "selected" : ""}>${esc(s)}</option>`).join("")}</select></label>
       <div class="sec-head"><h3>Payments <span class="pill ${ps.tone}">${ps.label}</span></h3>${t.bal > 0 ? `<button class="btn ghost sm" data-act="add-payment" data-id="${o.id}">+ Add payment</button>` : ""}</div>
       <div class="pay-list">${(o.payments || []).slice().sort((a, b) => a.date.localeCompare(b.date)).map((p) => `<div class="pay-row"><span>${p.no ? `<button class="rno" data-act="open-receipt" data-id="${o.id}" data-pid="${p.id}">${esc(p.no)}</button><br>` : ""}${fmtDate(p.date)} · ${esc(p.method)}${p.note ? ` <span class="muted">· ${esc(p.note)}</span>` : ""}</span><span class="num">${fmt(hal(p.amount))}</span><button class="icon-btn" data-act="del-payment" data-id="${o.id}" data-pid="${p.id}" aria-label="Delete payment">×</button></div>`).join("") || `<p class="small muted" style="margin:0">No payment received yet.</p>`}</div>
-      ${t.bal > 0 ? `<button class="btn primary" data-act="mark-paid" data-id="${o.id}">Mark fully paid · ${sar(t.bal)}</button>` : ""}`,
-      `<button class="btn danger" data-act="del-order" data-id="${o.id}">Delete</button><button class="btn" data-act="dup-order" data-id="${o.id}">Duplicate</button><button class="btn" data-act="edit-order" data-id="${o.id}">Edit</button>${PDF_OK ? `<button class="btn" data-act="pdf-order" data-id="${o.id}">PDF</button>` : ""}<button class="btn wa" data-act="share-order" data-id="${o.id}">${WA_ICON} Send</button>`,
-      (b) => { b.onchange = (e) => { if (e.target.id === "o-status") { o.status = e.target.value; touch("orders", o); save(); if (tab === "orders") render(); toast(`${o.no} marked ${o.status}`); } }; });
+      ${t.bal > 0 ? `<button class="btn primary" data-act="mark-paid" data-id="${o.id}">Mark fully paid · ${sar(t.bal)}</button>` : ""}
+      <div class="btn-row"><button class="btn sm" data-act="dup-order" data-id="${o.id}">${IC.copy} Duplicate</button><button class="btn sm danger" data-act="del-order" data-id="${o.id}">Delete</button></div>`,
+      `<button class="btn" data-act="edit-order" data-id="${o.id}">Edit</button><button class="btn wa" data-act="share-order" data-id="${o.id}">${WA_ICON} Send</button>`,
+      (b) => { b.onchange = (e) => { if (e.target.id === "o-status") { setStatus(o, e.target.value); openOrder(o); } }; });
     dlgCtx = { kind: "order", id: o.id };
+  }
+  function setStatus(o, s) { o.status = s; touch("orders", o); save(); if (tab !== "new") render(); toast(`${o.no} → ${s}`); }
+  function openQuote(o) {
+    const conv = o.convertedTo && live(state.orders).find((x) => x.no === o.convertedTo && !isQuote(x));
+    const phone = waPhone(o.customer.phone);
+    openDlg(`${o.no}`, `<p style="margin:0"><span class="pill ${tone(o.status)}">${esc(o.status)}</span>${conv ? ` → <button class="rno" data-act="open-order" data-id="${conv.id}">${esc(conv.no)}</button>` : ""}</p>${ticketHtml(o)}
+      <div class="acts">
+        ${o.status === "Quote" ? `<button class="btn accent" data-act="quote-convert" data-id="${o.id}">${IC.ready}Convert to order</button>` : ""}
+        ${PDF_OK ? `<button class="btn" data-act="pdf-order" data-id="${o.id}">${IC.pdf}PDF</button>` : ""}
+        ${phone ? `<button class="btn" data-act="call" data-phone="${esc(o.customer.phone)}">${IC.phone}Call</button>` : ""}
+        ${o.status === "Quote" ? `<button class="btn" data-act="quote-decline" data-id="${o.id}">${IC.trash}Declined</button>` : o.status === "Declined" ? `<button class="btn" data-act="quote-reopen" data-id="${o.id}">${IC.next}Reopen</button>` : ""}
+      </div>
+      <div class="btn-row"><button class="btn sm" data-act="dup-order" data-id="${o.id}">${IC.copy} Duplicate</button><button class="btn sm danger" data-act="del-order" data-id="${o.id}">Delete</button></div>`,
+      `${o.status === "Quote" ? `<button class="btn" data-act="edit-order" data-id="${o.id}">Edit</button>` : ""}<button class="btn wa" data-act="share-order" data-id="${o.id}">${WA_ICON} Send</button>`);
+    dlgCtx = { kind: "order", id: o.id };
+  }
+  function convertQuote(qo) {
+    const dd = state.settings.dueDays;
+    const o = { id: uid(), no: nextNumber(), status: state.settings.statuses[0] || "New", createdAt: today(), payments: [], device: device.id,
+      customerId: qo.customerId, customer: { ...qo.customer }, date: today(), dueDate: dd === "" || dd == null ? "" : addDays(today(), Number(dd) || 0),
+      vat: qo.vat, vatRate: qo.vatRate, discount: qo.discount ? { ...qo.discount } : null, notes: qo.notes, lines: qo.lines.map((l) => ({ ...l })), fromQuote: qo.no };
+    state.orders.push(o);
+    qo.status = "Converted"; qo.convertedTo = o.no;
+    touch("orders", o); touch("orders", qo); save();
+    return o;
   }
   function paymentDlg(o, full) {
     const bal = totals(o).bal;
     dlgCtx = null;
-    openDlg(full ? `Mark ${o.no} fully paid` : `Add payment · ${o.no}`, `
-      <p style="margin:0">Balance due: <b class="mono">${sar(bal)}</b></p>
+    openDlg(full ? `Mark ${o.no} fully paid` : `Payment · ${o.no}`, `
+      <p style="margin:0">${esc(o.customer.name)} · balance due <b class="mono">${sar(bal)}</b></p>
       <div class="grid2">
         <label class="f"><span>Amount, SAR</span><input id="p-amount" type="number" inputmode="decimal" min="0.01" step="0.01" value="${(bal / 100).toFixed(2)}" ${full ? "readonly" : ""}></label>
         <label class="f"><span>Date received</span><input id="p-date" type="date" value="${today()}"></label>
       </div>
-      <div class="f"><span class="small" style="font-weight:600;color:var(--ink-2)">Received by</span><div class="seg" id="p-method" style="grid-template-columns:repeat(2,minmax(0,1fr))">${METHODS.map((m, i) => `<button type="button" data-m="${m}" class="${i === 0 ? "on" : ""}">${m}</button>`).join("")}</div></div>
+      <div class="f"><span class="lbl">Received by</span><div class="seg" id="p-method" style="grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))">${METHODS.map((m, i) => `<button type="button" data-m="${m}" class="${i === 0 ? "on" : ""}">${m}</button>`).join("")}</div></div>
       <label class="f"><span>Note (optional)</span><input id="p-note" placeholder="Reference, cheque no."></label>`,
-      `<button class="btn" data-act="pay-back" data-id="${o.id}">Back</button><button class="btn primary" data-act="save-payment" data-id="${o.id}">${full ? "Mark fully paid" : "Save payment"}</button>`,
+      `<button class="btn" data-act="open-order" data-id="${o.id}">Back</button><button class="btn primary" data-act="save-payment" data-id="${o.id}">${full ? "Mark fully paid" : "Save payment"}</button>`,
       (b) => { b.onclick = (e) => { const m = e.target.closest("#p-method button"); if (m) $$("#p-method button", b).forEach((x) => x.classList.toggle("on", x === m)); }; });
   }
 
   /* ---------- receipts ---------- */
   function allReceipts() {
     const out = [];
-    live(state.orders).forEach((o) => (o.payments || []).forEach((p) => out.push({ o, p })));
+    jobs().forEach((o) => (o.payments || []).forEach((p) => out.push({ o, p })));
     return out.sort((a, b) => b.p.date.localeCompare(a.p.date) || String(b.p.no || "").localeCompare(String(a.p.no || "")));
   }
   function periodRange(k) {
@@ -815,6 +1048,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     if (k === "today") return [t, t];
     if (k === "month") return [m, t];
     if (k === "last") { const d = new Date(m + "T00:00:00Z"); d.setUTCDate(0); const end = d.toISOString().slice(0, 10); return [end.slice(0, 8) + "01", end]; }
+    if (k === "year") return [t.slice(0, 4) + "-01-01", t];
     return ["", "9999"];
   }
   views.receipts = () => {
@@ -825,14 +1059,14 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     const total = list.reduce((s, x) => s + hal(x.p.amount), 0);
     const byM = METHODS.map((m) => [m, list.filter((x) => x.p.method === m).reduce((s, x) => s + hal(x.p.amount), 0)]).filter(([, v]) => v);
     const shown = list.slice(0, 300);
-    return `<div class="top"><div><h1>Receipts</h1><p>Every payment received. Tap a receipt to see it or send it on WhatsApp.</p></div></div>
+    return `<div class="page-head"><div><h1>Receipts</h1><p>Every payment received</p></div><button class="btn primary sm" data-act="quick-pay">+ Payment</button></div>
       <div class="chips">${[["today", "Today"], ["month", "This month"], ["last", "Last month"], ["all", "All"]].map(([k, l]) => `<button class="chip ${filters.rperiod === k ? "on" : ""}" data-act="r-period" data-p="${k}">${l}</button>`).join("")}</div>
-      <div class="sum-card"><span>Received (${list.length} receipt${list.length === 1 ? "" : "s"})</span><span class="big">${sar(total)}</span>
+      <div class="sum-card"><span>Received · ${list.length} receipt${list.length === 1 ? "" : "s"}</span><span class="big">${sar(total)}</span>
         ${byM.map(([m, v]) => `<span class="muted">${esc(m)}</span><span class="num">${fmt(v)}</span>`).join("")}</div>
       <input type="search" id="r-search" class="search" placeholder="Search receipt, order, customer" value="${esc(filters.rq)}">
       <div class="list">${shown.map(({ o, p }) => `<button class="row" data-act="open-receipt" data-id="${o.id}" data-pid="${p.id}">
           <span><span class="t"><span class="mono">${esc(p.no || "Payment")}</span> · ${esc(o.customer.name)}</span><br><span class="s">${fmtDate(p.date)} · ${esc(p.method)} · for ${esc(o.no)}</span>${p.note ? `<br><span class="s">${esc(p.note)}</span>` : ""}</span>
-          <span class="r"><span class="mono">${fmt(hal(p.amount))}</span></span></button>`).join("") || `<div class="empty">No receipts in this period.</div>`}</div>
+          <span class="r"><span class="amt" style="color:var(--good)">${fmt(hal(p.amount))}</span></span></button>`).join("") || `<div class="empty">No receipts in this period.</div>`}</div>
       ${list.length > shown.length ? `<p class="small muted" style="text-align:center">Showing the latest 300 of ${list.length}. Search to find older receipts.</p>` : ""}`;
   };
   /** Balance on the order right after this payment (payments up to and including it). */
@@ -849,7 +1083,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     if (p.note) out.push(`Note: ${p.note}`);
     out.push("", `For job order ${o.no} · total ${sar(t.total)}`, `Paid to date: ${sar(a.paid)}`, a.bal <= 0 ? "*Fully paid* ✓" : `*Balance due: ${sar(a.bal)}*`);
     if (s.footer) out.push("", s.footer);
-    if (s.companyName) out.push(`— ${s.companyName}${s.phone ? " · " + s.phone : ""}`);
+    if (sign()) out.push(sign());
     return out.join("\n");
   }
   function openReceipt(o, p) {
@@ -869,8 +1103,9 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
           <dt>Balance after</dt><dd class="mono" style="color:${a.bal > 0 ? "var(--bad)" : "var(--good)"}">${a.bal > 0 ? fmt(a.bal) : "Fully paid"}</dd>
         </dl>
       </div>
-      ${t.bal !== a.bal ? `<p class="small muted" style="margin:0">Balance on the order now: ${t.bal > 0 ? sar(t.bal) : "fully paid"}.</p>` : ""}`,
-      `<button class="btn danger" data-act="del-payment" data-id="${o.id}" data-pid="${p.id}">Delete</button><button class="btn" data-act="open-order" data-id="${o.id}">Open order</button>${PDF_OK ? `<button class="btn" data-act="pdf-receipt" data-id="${o.id}" data-pid="${p.id}">PDF</button>` : ""}<button class="btn wa" data-act="share-receipt" data-id="${o.id}" data-pid="${p.id}">${WA_ICON} Send receipt</button>`);
+      ${t.bal !== a.bal ? `<p class="small muted" style="margin:0">Balance on the order now: ${t.bal > 0 ? sar(t.bal) : "fully paid"}.</p>` : ""}
+      <div class="btn-row"><button class="btn sm" data-act="open-order" data-id="${o.id}">${IC.doc} Open order</button><button class="btn sm danger" data-act="del-payment" data-id="${o.id}" data-pid="${p.id}">Delete</button></div>`,
+      `${PDF_OK ? `<button class="btn" data-act="pdf-receipt" data-id="${o.id}" data-pid="${p.id}">PDF</button>` : ""}<button class="btn wa" data-act="share-receipt" data-id="${o.id}" data-pid="${p.id}">${WA_ICON} Send receipt</button>`);
     dlgCtx = { kind: "receipt", id: o.id, pid: p.id };
   }
   const findPay = (oid, pid) => { const o = byId(state.orders, oid); return [o, o && (o.payments || []).find((x) => x.id === pid)]; };
@@ -884,26 +1119,42 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       ${s.phone ? `<span>Tel: ${esc(s.phone)}</span>` : ""}${s.address ? `<span>${esc(s.address).replace(/\n/g, "<br>")}</span>` : ""}${s.email ? `<span>${esc(s.email)}</span>` : ""}</div></div>`;
   }
   const pdfFooter = () => `<div class="pf" data-brk>${state.settings.footer ? esc(state.settings.footer) + "<br>" : ""}Printed ${fmtDate(today())}</div>`;
+  const pdfBank = () => { const s = state.settings; return s.iban ? `<div class="bank" data-brk><b>Bank transfer:</b> ${esc(s.bankName ? s.bankName + " · " : "")}IBAN ${esc(s.iban)}</div>` : ""; };
+  const custBox = (c, label) => `<div class="box" data-brk><small>${label}</small><b>${esc(c.name)}</b>${c.company ? `<br>${esc(c.company)}` : ""}${c.phone ? `<br>Tel: ${esc(c.phone)}` : ""}</div>`;
   function orderDoc(o) {
-    const t = totals(o);
+    const t = totals(o), q = isQuote(o);
     return `<div class="pdoc">${pdfHeader()}
-      <div class="pt" data-brk><h1>JOB ORDER</h1><dl><dt>Order no.</dt><dd class="mono">${esc(o.no)}</dd><dt>Date</dt><dd>${fmtDate(o.date)}</dd>${o.dueDate ? `<dt>Delivery</dt><dd>${fmtDate(o.dueDate)}</dd>` : ""}<dt>Status</dt><dd>${esc(o.status)}</dd></dl></div>
-      <div class="box" data-brk><small>Customer</small><b>${esc(o.customer.name)}</b>${o.customer.company ? `<br>${esc(o.customer.company)}` : ""}${o.customer.phone ? `<br>Tel: ${esc(o.customer.phone)}` : ""}</div>
+      <div class="pt" data-brk><h1>${q ? "QUOTATION" : "JOB ORDER"}</h1><dl><dt>${q ? "Quote no." : "Order no."}</dt><dd class="mono">${esc(o.no)}</dd><dt>Date</dt><dd>${fmtDate(o.date)}</dd>
+        ${q ? (o.validUntil ? `<dt>Valid until</dt><dd>${fmtDate(o.validUntil)}</dd>` : "") : `${o.dueDate ? `<dt>Delivery</dt><dd>${fmtDate(o.dueDate)}</dd>` : ""}<dt>Status</dt><dd>${esc(o.status)}</dd>`}</dl></div>
+      ${custBox(o.customer, q ? "Prepared for" : "Customer")}
       <table><thead><tr><th style="width:22px">#</th><th>Item</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Amount</th></tr></thead><tbody>
       ${o.lines.map((l, i) => `<tr data-brk><td>${i + 1}</td><td><b>${esc(l.name)}</b>${l.spec ? `<br><span class="spec">${esc(l.spec)}</span>` : ""}${l.note ? `<br><span class="note">Note: ${esc(l.note)}</span>` : ""}</td>
         <td class="r">${qtyFmt(l.qty)} ${esc(l.unit)}</td><td class="r mono">${fmt(hal(l.price))}</td><td class="r mono">${fmt(lineHal(l.qty, l.price))}</td></tr>`).join("")}
       </tbody></table>
-      <div class="tot" data-brk><span>Subtotal</span><span class="r mono">${fmt(t.sub)}</span>${o.vat ? `<span>VAT ${t.rate}%</span><span class="r mono">${fmt(t.vat)}</span>` : ""}
+      <div class="tot" data-brk><span>Subtotal</span><span class="r mono">${fmt(t.sub)}</span>${t.disc ? `<span class="disc">${esc(discLabel(o))}</span><span class="r mono disc">−${fmt(t.disc)}</span>` : ""}${o.vat ? `<span>VAT ${t.rate}%</span><span class="r mono">${fmt(t.vat)}</span>` : ""}
         <span class="g">Total (SAR)</span><span class="g r mono">${fmt(t.total)}</span>
-        ${t.paid ? `<span>Paid</span><span class="r mono">${fmt(t.paid)}</span>${t.bal > 0 ? `<span class="g bal">Balance due</span><span class="g bal r mono">${fmt(t.bal)}</span>` : `<span class="g ok">Fully paid</span><span class="g ok r mono">0.00</span>`}` : ""}</div>
+        ${!q && t.paid ? `<span>Paid</span><span class="r mono">${fmt(t.paid)}</span>${t.bal > 0 ? `<span class="g bal">Balance due</span><span class="g bal r mono">${fmt(t.bal)}</span>` : `<span class="g ok">Fully paid</span><span class="g ok r mono">0.00</span>`}` : ""}</div>
       ${o.notes ? `<div class="notes" data-brk><b>Notes:</b> ${esc(o.notes).replace(/\n/g, "<br>")}</div>` : ""}
+      ${q || t.bal > 0 ? pdfBank() : ""}
+      ${pdfFooter()}</div>`;
+  }
+  function deliveryDoc(o) {
+    return `<div class="pdoc">${pdfHeader()}
+      <div class="pt" data-brk><h1>DELIVERY NOTE</h1><dl><dt>Order no.</dt><dd class="mono">${esc(o.no)}</dd><dt>Order date</dt><dd>${fmtDate(o.date)}</dd><dt>Delivered</dt><dd>${fmtDate(today())}</dd></dl></div>
+      ${custBox(o.customer, "Deliver to")}
+      <table><thead><tr><th style="width:22px">#</th><th>Item</th><th class="r">Quantity</th></tr></thead><tbody>
+      ${o.lines.map((l, i) => `<tr data-brk><td>${i + 1}</td><td><b>${esc(l.name)}</b>${l.spec ? `<br><span class="spec">${esc(l.spec)}</span>` : ""}${l.note ? `<br><span class="note">Note: ${esc(l.note)}</span>` : ""}</td><td class="r">${qtyFmt(l.qty)} ${esc(l.unit)}</td></tr>`).join("")}
+      </tbody></table>
+      ${o.notes ? `<div class="notes" data-brk><b>Notes:</b> ${esc(o.notes).replace(/\n/g, "<br>")}</div>` : ""}
+      <div class="notes" data-brk>Goods received in good condition.</div>
+      <div class="sign" data-brk><span>Delivered by</span><span>Received by (name &amp; signature)</span></div>
       ${pdfFooter()}</div>`;
   }
   function receiptDoc(o, p) {
     const t = totals(o), a = balanceAfter(o, p);
     return `<div class="pdoc">${pdfHeader()}
       <div class="pt"><h1>PAYMENT RECEIPT</h1><dl><dt>Receipt no.</dt><dd class="mono">${esc(p.no || "—")}</dd><dt>Date</dt><dd>${fmtDate(p.date)}</dd></dl></div>
-      <div class="box"><small>Received from</small><b>${esc(o.customer.name)}</b>${o.customer.company ? `<br>${esc(o.customer.company)}` : ""}${o.customer.phone ? `<br>Tel: ${esc(o.customer.phone)}` : ""}</div>
+      ${custBox(o.customer, "Received from")}
       <div class="amt"><span>Amount received</span><b>SAR ${fmt(hal(p.amount))}</b><span>Paid by ${esc(p.method)}</span></div>
       <dl class="kvp" style="grid-template-columns:1fr auto;font-size:11px;gap:4px 12px">
         <dt>For job order</dt><dd class="mono">${esc(o.no)}</dd>
@@ -913,6 +1164,32 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
         ${p.note ? `<dt>Note</dt><dd>${esc(p.note)}</dd>` : ""}
       </dl>
       <div class="sign"><span>Received by</span><span>Customer signature</span></div>
+      ${pdfFooter()}</div>`;
+  }
+  /** Customer statement: orders as debits, receipts as credits, running balance. */
+  function statementRows(c) {
+    const os = jobs().filter((o) => o.customerId === c.id && o.status !== "Cancelled");
+    const rows = [];
+    os.forEach((o) => {
+      rows.push({ date: o.date, ref: o.no, det: o.lines.map((l) => l.name).join(", "), dr: totals(o).total, cr: 0 });
+      (o.payments || []).forEach((p) => rows.push({ date: p.date, ref: p.no || "Payment", det: `${p.method} · for ${o.no}`, dr: 0, cr: hal(p.amount) }));
+    });
+    rows.sort((a, b) => a.date.localeCompare(b.date) || b.dr - a.dr);
+    let bal = 0;
+    rows.forEach((r) => { bal += r.dr - r.cr; r.bal = bal; });
+    return rows;
+  }
+  function statementDoc(c) {
+    const rows = statementRows(c);
+    const dr = rows.reduce((s, r) => s + r.dr, 0), cr = rows.reduce((s, r) => s + r.cr, 0);
+    return `<div class="pdoc">${pdfHeader()}
+      <div class="pt" data-brk><h1>STATEMENT</h1><dl><dt>Date</dt><dd>${fmtDate(today())}</dd><dt>Balance due</dt><dd class="mono">${fmt(dr - cr)}</dd></dl></div>
+      ${custBox(c, "Customer")}
+      <table><thead><tr><th>Date</th><th>Ref.</th><th>Details</th><th class="r">Debit</th><th class="r">Credit</th><th class="r">Balance</th></tr></thead><tbody>
+      ${rows.map((r) => `<tr data-brk><td>${fmtDate(r.date)}</td><td class="mono">${esc(r.ref)}</td><td>${esc(r.det)}</td><td class="r mono">${r.dr ? fmt(r.dr) : ""}</td><td class="r mono">${r.cr ? fmt(r.cr) : ""}</td><td class="r mono">${fmt(r.bal)}</td></tr>`).join("") || `<tr><td colspan="6">No transactions.</td></tr>`}
+      </tbody></table>
+      <div class="tot" data-brk><span>Total orders</span><span class="r mono">${fmt(dr)}</span><span>Total received</span><span class="r mono">${fmt(cr)}</span><span class="g ${dr - cr > 0 ? "bal" : "ok"}">Balance due (SAR)</span><span class="g r mono ${dr - cr > 0 ? "bal" : "ok"}">${fmt(dr - cr)}</span></div>
+      ${dr - cr > 0 ? pdfBank() : ""}
       ${pdfFooter()}</div>`;
   }
   /** Render the document to A5 pages, cutting only between rows/blocks. */
@@ -959,26 +1236,31 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     return { name, pages, preview, base64: uri.slice(uri.indexOf(",") + 1), blob: pdf.output("blob") };
   }
   let lastPdf = null;
+  /** kind: order | dn | receipt | statement */
   async function pdfDlg(kind, o, p) {
-    const name = `${kind === "order" ? o.no : p.no || "receipt-" + p.date}.pdf`.replace(/[^\w.-]+/g, "-");
-    const back = kind === "order" ? `data-act="open-order" data-id="${o.id}"` : `data-act="open-receipt" data-id="${o.id}" data-pid="${p.id}"`;
+    const base = kind === "receipt" ? p.no || "receipt-" + p.date : kind === "dn" ? `DN-${o.no}` : kind === "statement" ? `Statement-${o.name}` : o.no;
+    const name = `${base}.pdf`.replace(/[^\w.؀-ۿ-]+/g, "-");
+    const back = kind === "receipt" ? `data-act="open-receipt" data-id="${o.id}" data-pid="${p.id}"` : kind === "statement" ? `data-act="open-customer" data-id="${o.id}"` : `data-act="open-order" data-id="${o.id}"`;
     dlgCtx = null; lastPdf = null;
-    openDlg(`PDF · ${name.replace(/\.pdf$/, "")}`, `<div class="pdf-prev" id="pdf-prev"><span class="small muted">Preparing PDF…</span></div><p class="small muted" style="margin:0" id="pdf-info"></p>`,
+    const canDeliver = kind === "dn" && o.status !== "Delivered" && state.settings.statuses.includes("Delivered");
+    openDlg(`PDF · ${base}`, `<div class="pdf-prev" id="pdf-prev"><span class="small muted">Preparing PDF…</span></div><p class="small muted" style="margin:0" id="pdf-info"></p>
+      ${canDeliver ? `<button class="btn" data-act="mark-delivered" data-id="${o.id}">${IC.ready} Mark order as Delivered</button>` : ""}`,
       `<button class="btn" ${back}>Back</button>${NATIVE ? "" : `<button class="btn" data-act="pdf-save" disabled>Save PDF</button>`}<button class="btn wa" data-act="pdf-share" disabled>${WA_ICON} Share PDF</button>`);
     try {
-      const r = await makePdf(kind === "order" ? orderDoc(o) : receiptDoc(o, p), name);
-      if (!$("#pdf-prev")) return; // dialog was closed meanwhile
+      const html = kind === "receipt" ? receiptDoc(o, p) : kind === "dn" ? deliveryDoc(o) : kind === "statement" ? statementDoc(o) : orderDoc(o);
+      const r = await makePdf(html, name);
+      if (!$("#pdf-prev")) return; // sheet was closed meanwhile
       lastPdf = r;
       $("#pdf-prev").innerHTML = `<img src="${r.preview}" alt="Page 1 preview">`;
-      $("#pdf-info").textContent = `${name} · A5 · ${r.pages} page${r.pages > 1 ? "s" : ""} · ${Math.max(1, Math.round(r.blob.size / 1024))} KB. Share PDF opens your apps; in WhatsApp choose the chat to send it to.`;
+      $("#pdf-info").textContent = `${name} · A5 · ${r.pages} page${r.pages > 1 ? "s" : ""} · ${Math.max(1, Math.round(r.blob.size / 1024))} KB. Share PDF opens your apps; in WhatsApp choose the chat.`;
       $$("#dlg-foot [disabled]").forEach((x) => (x.disabled = false));
     } catch (err) {
       if ($("#pdf-prev")) $("#pdf-prev").innerHTML = `<span class="small" style="color:var(--bad);padding:16px">Could not create the PDF: ${esc(err.message || err)}</span>`;
     }
   }
-  function savePdfFile(r) {
+  function saveBlob(blob, name) {
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(r.blob); a.download = r.name; document.body.appendChild(a); a.click();
+    a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   }
   async function sharePdf(r) {
@@ -989,7 +1271,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     }
     const file = new File([r.blob], r.name, { type: "application/pdf" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: r.name }); return; }
-    savePdfFile(r);
+    saveBlob(r.blob, r.name);
     toast(`This browser cannot share files. Saved ${r.name} instead; attach it in WhatsApp.`);
   }
   /** Shrink a chosen logo to max 400 px and keep it as a small data URL. */
@@ -1016,15 +1298,31 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     });
   }
 
+  /* ---------- more ---------- */
+  views.more = () => {
+    const row = (t, ic, title, sub) => `<button data-tab="${t}"><span class="ic">${ic}</span><span><b>${title}</b><small>${sub}</small></span><span class="chev">›</span></button>`;
+    return `<div class="page-head"><div><h1>More</h1></div></div>
+      <div class="menu">
+        ${row("customers", IC.users, "Customers", `${live(state.customers).length} saved · history, reminders, statements`)}
+        ${row("items", IC.box, "Items", `${live(state.items).length} products with prices`)}
+        <button data-act="go-quotes"><span class="ic">${IC.quote}</span><span><b>Quotations</b><small>${quotes().filter((o) => o.status === "Quote").length} open</small></span><span class="chev">›</span></button>
+        ${row("reports", IC.chart, "Reports", "Sales, collections, top customers, Excel export")}
+      </div>
+      <div class="menu" style="margin-top:12px">
+        ${row("settings", IC.gear, "Settings", "Company, logo, bank, statuses, theme")}
+        <button data-act="go-settings-sec" data-sec="sec-sync"><span class="ic">${IC.cloud}</span><span><b>Sync &amp; backup</b><small>${device.sync.url ? (device.sync.error ? "Sync problem" : "Sync on") : "Sync off"} · backup file</small></span><span class="chev">›</span></button>
+      </div>`;
+  };
+
   /* ---------- customers ---------- */
   views.customers = () => {
     const q = filters.cq.toLowerCase();
     const list = live(state.customers).sort((a, b) => a.name.localeCompare(b.name)).filter((c) => !q || [c.name, c.phone, c.company].join(" ").toLowerCase().includes(q));
-    return `<div class="top"><div><h1>Customers</h1><p>Saved once, picked on every order.</p></div><button class="btn primary sm" data-act="new-customer">+ Add</button></div>
+    return `${backTo()}<div class="page-head"><div><h1>Customers</h1><p>${live(state.customers).length} saved</p></div><button class="btn primary sm" data-act="new-customer">+ Add</button></div>
       <input type="search" id="c-search" class="search" placeholder="Search name, phone, company" value="${esc(filters.cq)}">
       <div class="list">${list.map((c) => {
-        const os = live(state.orders).filter((o) => o.customerId === c.id);
-        const due = os.filter((o) => o.status !== "Cancelled").reduce((s, o) => s + Math.max(totals(o).bal, 0), 0);
+        const os = jobs().filter((o) => o.customerId === c.id);
+        const due = os.reduce((s, o) => s + dueOf(o), 0);
         return `<button class="row" data-act="open-customer" data-id="${c.id}"><span><span class="t">${esc(c.name)}</span><br><span class="s">${esc([c.company, c.phone].filter(Boolean).join(" · ") || "No details")}</span></span><span class="r"><span class="s">${os.length} order${os.length === 1 ? "" : "s"}</span>${due ? `<span class="pill bad">Due ${fmt(due)}</span>` : ""}</span></button>`;
       }).join("") || `<div class="empty">No customers yet. Tap + Add to save your first customer.</div>`}</div>`;
   };
@@ -1040,16 +1338,26 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   }
   function openCustomer(c) {
     if (!c) return closeDlg();
-    const orders = live(state.orders).filter((o) => o.customerId === c.id).sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.no.localeCompare(a.no));
+    const orders = jobs().filter((o) => o.customerId === c.id).sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.no.localeCompare(a.no));
+    const qs = quotes().filter((o) => o.customerId === c.id);
     const billed = orders.filter((o) => o.status !== "Cancelled").reduce((s, o) => s + totals(o).total, 0);
     const paid = orders.reduce((s, o) => s + totals(o).paid, 0);
-    const due = orders.filter((o) => o.status !== "Cancelled").reduce((s, o) => s + Math.max(totals(o).bal, 0), 0);
+    const due = orders.reduce((s, o) => s + dueOf(o), 0);
+    const num = waPhone(c.phone);
     openDlg(c.name, `
-      <dl class="kv"><dt>Phone</dt><dd class="mono">${esc(c.phone || "—")}</dd><dt>Company</dt><dd>${esc(c.company || "—")}</dd>${c.notes ? `<dt>Notes</dt><dd>${esc(c.notes)}</dd>` : ""}
-        <dt>Orders</dt><dd>${orders.length} · total ${sar(billed)}</dd><dt>Received</dt><dd class="mono">${sar(paid)}</dd><dt>Due pending</dt><dd class="mono" style="color:${due ? "var(--bad)" : "inherit"}">${sar(due)}</dd></dl>
-      <h3>Previous orders</h3>
-      <div class="list">${orders.map(orderRow).join("") || `<div class="empty">No orders yet.</div>`}</div>`,
-      `<button class="btn danger" data-act="del-customer" data-id="${c.id}">Delete</button><button class="btn" data-act="edit-customer" data-id="${c.id}">Edit</button><button class="btn primary" data-act="order-for" data-id="${c.id}">New order</button>`);
+      <dl class="kv"><dt>Phone</dt><dd class="mono">${esc(c.phone || "—")}</dd>${c.company ? `<dt>Company</dt><dd>${esc(c.company)}</dd>` : ""}${c.notes ? `<dt>Notes</dt><dd>${esc(c.notes)}</dd>` : ""}
+        <dt>Orders</dt><dd>${orders.length} · ${sar(billed)}</dd><dt>Received</dt><dd class="mono">${sar(paid)}</dd><dt>Due pending</dt><dd class="mono" style="color:${due ? "var(--bad)" : "inherit"}">${sar(due)}</dd>${qs.length ? `<dt>Quotations</dt><dd>${qs.length}</dd>` : ""}</dl>
+      <div class="acts">
+        ${num ? `<button class="btn" data-act="call" data-phone="${esc(c.phone)}">${IC.phone}Call</button><button class="btn wa" data-act="wa-chat" data-phone="${esc(c.phone)}">${WA_ICON}Chat</button>` : ""}
+        ${due ? `<button class="btn" data-act="cust-reminder" data-id="${c.id}">${IC.bell}Reminder</button>` : ""}
+        ${PDF_OK ? `<button class="btn" data-act="pdf-statement" data-id="${c.id}">${IC.pdf}Statement</button>` : ""}
+        <button class="btn" data-act="quote-for" data-id="${c.id}">${IC.quote}Quotation</button>
+        <button class="btn" data-act="edit-customer" data-id="${c.id}">${IC.edit}Edit</button>
+      </div>
+      <h3>Orders</h3>
+      <div class="list">${orders.map(orderRow).join("") || `<div class="empty">No orders yet.</div>`}</div>
+      <button class="btn sm danger" data-act="del-customer" data-id="${c.id}" style="align-self:flex-start">Delete customer</button>`,
+      `<button class="btn primary" data-act="order-for" data-id="${c.id}">＋ New order</button>`);
     dlgCtx = { kind: "customer", id: c.id };
   }
 
@@ -1057,9 +1365,9 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   views.items = () => {
     const q = filters.iq.toLowerCase();
     const list = live(state.items).sort((a, b) => a.name.localeCompare(b.name)).filter((i) => !q || [i.name, i.spec].join(" ").toLowerCase().includes(q));
-    return `<div class="top"><div><h1>Items</h1><p>Your products with default price and details.</p></div><button class="btn primary sm" data-act="new-item">+ Add</button></div>
+    return `${backTo()}<div class="page-head"><div><h1>Items</h1><p>${live(state.items).length} products with default price and details</p></div><button class="btn primary sm" data-act="new-item">+ Add</button></div>
       <input type="search" id="i-search" class="search" placeholder="Search items" value="${esc(filters.iq)}">
-      <div class="list">${list.map((i) => `<button class="row" data-act="edit-item" data-id="${i.id}"><span><span class="t">${esc(i.name)}</span><br><span class="s spec">${esc(i.spec || "No details")}</span></span><span class="r"><span class="mono">${fmt(hal(i.price))}</span><span class="s">per ${esc(i.unit)}</span></span></button>`).join("") || `<div class="empty">No items yet. Tap + Add to save a product like "Business cards".</div>`}</div>`;
+      <div class="list">${list.map((i) => `<button class="row" data-act="edit-item" data-id="${i.id}"><span><span class="t">${esc(i.name)}</span><br><span class="s spec">${esc(i.spec || "No details")}</span></span><span class="r"><span class="amt">${fmt(hal(i.price))}</span><span class="s">per ${esc(i.unit)}</span></span></button>`).join("") || `<div class="empty">No items yet. Tap + Add to save a product like "Business cards".</div>`}</div>`;
   };
   function itemForm(it) {
     const x = it || { unit: "pcs" };
@@ -1074,6 +1382,79 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       `${it ? `<button class="btn danger" data-act="del-item" data-id="${it.id}">Delete</button>` : `<button class="btn" data-close>Cancel</button>`}<button class="btn primary" data-act="save-item" data-id="${x.id || ""}">Save item</button>`);
   }
 
+  /* ---------- reports ---------- */
+  function reportData() {
+    const [from, to] = periodRange(filters.rep);
+    const inP = (d) => d >= from && d <= to;
+    const os = jobs().filter((o) => o.status !== "Cancelled" && inP(o.date));
+    const sales = os.reduce((s, o) => s + totals(o).total, 0);
+    const recv = allReceipts().filter((x) => inP(x.p.date));
+    const collected = recv.reduce((s, x) => s + hal(x.p.amount), 0);
+    const due = jobs().reduce((s, o) => s + dueOf(o), 0);
+    const months = {};
+    os.forEach((o) => { const m = o.date.slice(0, 7); (months[m] = months[m] || { s: 0, c: 0, n: 0 }).s += totals(o).total; months[m].n++; });
+    recv.forEach((x) => { const m = x.p.date.slice(0, 7); (months[m] = months[m] || { s: 0, c: 0, n: 0 }).c += hal(x.p.amount); });
+    const custs = {}, items = {};
+    os.forEach((o) => {
+      const k = o.customerId; (custs[k] = custs[k] || { name: o.customer.name, v: 0, n: 0 }).v += totals(o).total; custs[k].n++;
+      o.lines.forEach((l) => { const key = l.name.trim().toLowerCase(); (items[key] = items[key] || { name: l.name, v: 0, q: 0, unit: l.unit }).v += lineHal(l.qty, l.price); items[key].q += Number(l.qty) || 0; });
+    });
+    const top = (obj) => Object.values(obj).sort((a, b) => b.v - a.v).slice(0, 5);
+    return { from, to, os, recv, sales, collected, due, months: Object.entries(months).sort((a, b) => b[0].localeCompare(a[0])), topC: top(custs), topI: top(items) };
+  }
+  views.reports = () => {
+    const r = reportData();
+    const avg = r.os.length ? Math.round(r.sales / r.os.length) : 0;
+    const bars = (list, unit) => { const max = Math.max(1, ...list.map((x) => x.v)); return list.map((x) => `<div class="bar-row"><span>${esc(x.name)}${unit ? ` <span class="muted small">· ${unit(x)}</span>` : ""}</span><span class="num">${fmt(x.v)}</span><span class="bar"><span style="width:${Math.max(2, Math.round((x.v / max) * 100))}%"></span></span></div>`).join(""); };
+    const ms = r.months.reduce((a, [, v]) => ({ s: a.s + v.s, c: a.c + v.c, n: a.n + v.n }), { s: 0, c: 0, n: 0 });
+    return `${backTo()}<div class="page-head"><div><h1>Reports</h1><p>Sales are job orders by order date (not cancelled, incl. VAT). Collected is receipts by date.</p></div></div>
+      <div class="chips">${[["month", "This month"], ["last", "Last month"], ["year", "This year"], ["all", "All time"]].map(([k, l]) => `<button class="chip ${filters.rep === k ? "on" : ""}" data-act="rep-period" data-p="${k}">${l}</button>`).join("")}</div>
+      <div class="tiles">
+        <div class="tile"><span class="k">Sales · ${r.os.length} orders</span><span class="v"><small>SAR</small> ${fmt(r.sales)}</span></div>
+        <div class="tile good"><span class="k">Collected · ${r.recv.length} receipts</span><span class="v"><small>SAR</small> ${fmt(r.collected)}</span></div>
+        <div class="tile ${r.due ? "bad" : ""}"><span class="k">Due pending (all)</span><span class="v"><small>SAR</small> ${fmt(r.due)}</span></div>
+        <div class="tile"><span class="k">Average order</span><span class="v"><small>SAR</small> ${fmt(avg)}</span></div>
+      </div>
+      <div class="sec-title"><h2>By month</h2></div>
+      <div class="card" style="overflow-x:auto">${r.months.length ? `<table class="rtable"><thead><tr><th>Month</th><th class="num">Orders</th><th class="num">Sales</th><th class="num">Collected</th></tr></thead><tbody>
+        ${r.months.map(([m, v]) => `<tr><td>${fmtMonth(m)}</td><td class="num">${v.n}</td><td class="num">${fmt(v.s)}</td><td class="num">${fmt(v.c)}</td></tr>`).join("")}</tbody>
+        <tfoot><tr><td>Total</td><td class="num">${ms.n}</td><td class="num">${fmt(ms.s)}</td><td class="num">${fmt(ms.c)}</td></tr></tfoot></table>` : `<p class="small muted" style="margin:0">No sales or receipts in this period.</p>`}</div>
+      <div class="sec-title"><h2>Top customers</h2></div>
+      <div class="card bars">${bars(r.topC, (x) => `${x.n} order${x.n === 1 ? "" : "s"}`) || `<p class="small muted" style="margin:0">No sales in this period.</p>`}</div>
+      <div class="sec-title"><h2>Top items <span class="muted small">(before VAT)</span></h2></div>
+      <div class="card bars">${bars(r.topI, (x) => `${qtyFmt(x.q)} ${esc(x.unit || "")}`) || `<p class="small muted" style="margin:0">No sales in this period.</p>`}</div>
+      <div class="sec-title"><h2>Export to Excel</h2></div>
+      <div class="card section"><p class="small muted" style="margin:0">CSV files for the selected period. They open in Excel and Google Sheets (Arabic text included).</p>
+        <div class="btn-row"><button class="btn" data-act="csv" data-k="orders">Orders</button><button class="btn" data-act="csv" data-k="lines">Order items</button><button class="btn" data-act="csv" data-k="receipts">Receipts</button></div></div>`;
+  };
+  function csvText(kind) {
+    const r = reportData();
+    const h = (x) => (x / 100).toFixed(2);
+    let rows;
+    if (kind === "orders") {
+      rows = [["Order no", "Date", "Delivery", "Customer", "Company", "Phone", "Status", "Subtotal", "Discount", "VAT", "Total", "Paid", "Balance"]];
+      r.os.forEach((o) => { const t = totals(o); rows.push([o.no, o.date, o.dueDate, o.customer.name, o.customer.company, o.customer.phone, o.status, h(t.sub), h(t.disc), h(t.vat), h(t.total), h(t.paid), h(t.bal)]); });
+    } else if (kind === "lines") {
+      rows = [["Order no", "Date", "Customer", "Item", "Details", "Qty", "Unit", "Price", "Amount (before VAT)"]];
+      r.os.forEach((o) => o.lines.forEach((l) => rows.push([o.no, o.date, o.customer.name, l.name, l.spec, l.qty, l.unit, Number(l.price).toFixed(2), h(lineHal(l.qty, l.price))])));
+    } else {
+      rows = [["Receipt no", "Date", "Customer", "Order no", "Method", "Note", "Amount"]];
+      r.recv.forEach(({ o, p }) => rows.push([p.no || "", p.date, o.customer.name, o.no, p.method, p.note || "", h(hal(p.amount))]));
+    }
+    return "﻿" + rows.map((row) => row.map((v) => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }).join(",")).join("\r\n");
+  }
+  async function exportCsv(kind) {
+    const name = `job-orders-${kind}-${fmtDate(today())}.csv`;
+    const text = csvText(kind);
+    if (NATIVE && Plug.Filesystem && Plug.Share) {
+      const w = await Plug.Filesystem.writeFile({ path: name, data: text, directory: "CACHE", encoding: "utf8" });
+      await Plug.Share.share({ title: name, files: [w.uri], dialogTitle: "Save or send the Excel file…" });
+      return;
+    }
+    saveBlob(new Blob([text], { type: "text/csv;charset=utf-8" }), name);
+    toast(`Saved ${name}`);
+  }
+
   /* ---------- settings ---------- */
   let stEdit = null; // statuses being edited
   function storageUse() { let n = 0; try { n = (localStorage.getItem(KEY) || "").length + (localStorage.getItem(DKEY) || "").length; } catch (e) {} return n; }
@@ -1082,28 +1463,32 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     const used = storageUse(), pct = Math.min(100, Math.round((used / QUOTA) * 100));
     if (!stEdit) stEdit = s.statuses.map((x) => ({ old: x, name: x }));
     const usedBy = (name) => live(state.orders).some((o) => o.status === name);
-    return `<div class="top"><div><h1>Settings</h1><p>Company details are shared with every synced device.</p></div></div>
+    return `${backTo()}<div class="page-head"><div><h1>Settings</h1><p>Company details are shared with every synced device.</p></div></div>
       <section class="card section">
         <h2>Company</h2>
         <label class="f"><span>Company name</span><input id="s-company" value="${esc(s.companyName)}"></label>
         <label class="f"><span>Contact number</span><input id="s-phone" type="tel" value="${esc(s.phone)}"></label>
-        <label class="f"><span>Address (printed on PDFs)</span><textarea id="s-address" rows="2" placeholder="Street, district, city">${esc(s.address)}</textarea></label>
-        <label class="f"><span>Email (printed on PDFs)</span><input id="s-email" type="email" value="${esc(s.email)}"></label>
-        <div class="f"><span class="small" style="font-weight:600;color:var(--ink-2)">Company logo (printed on PDFs)</span>
+        <label class="f"><span>Address (on PDFs)</span><textarea id="s-address" rows="2" placeholder="Street, district, city">${esc(s.address)}</textarea></label>
+        <label class="f"><span>Email (on PDFs)</span><input id="s-email" type="email" value="${esc(s.email)}"></label>
+        <div class="f"><span class="lbl">Company logo (app and PDFs)</span>
           <div class="logo-box">${s.logo ? `<img src="${esc(s.logo)}" alt="Company logo">` : `<span class="small muted">No logo yet.</span>`}
             <button type="button" class="btn sm" data-act="logo-pick">${s.logo ? "Change logo" : "Choose logo"}</button>${s.logo ? `<button type="button" class="btn sm danger" data-act="logo-remove">Remove</button>` : ""}</div></div>
+        <div class="grid2">
+          <label class="f"><span>Bank name (reminders, PDFs)</span><input id="s-bank" value="${esc(s.bankName)}"></label>
+          <label class="f"><span>IBAN</span><input id="s-iban" value="${esc(s.iban)}" placeholder="SA…"></label>
+        </div>
         <label class="f"><span>Message footer</span><input id="s-footer" value="${esc(s.footer)}"></label>
         <div class="grid2">
           <label class="check"><input id="s-vat" type="checkbox" ${s.vatDefault ? "checked" : ""}> Add VAT by default</label>
           <label class="f"><span>VAT rate %</span><input id="s-rate" type="number" min="0" max="100" step="0.01" value="${esc(s.vatRate)}"></label>
-          <label class="f full"><span>Default delivery after (days). Leave empty for no date.</span><input id="s-due" type="number" min="0" step="1" value="${esc(s.dueDays)}" placeholder="No default"></label>
+          <label class="f full"><span>Default delivery after (days). Empty = no date.</span><input id="s-due" type="number" min="0" step="1" value="${esc(s.dueDays)}" placeholder="No default"></label>
         </div>
         <button class="btn primary" data-act="save-settings">Save company settings</button>
       </section>
 
       <section class="card section">
         <h2>Order statuses</h2>
-        <p class="small muted" style="margin:0">The first status is given to new orders. Delivered and Cancelled close an order and cannot be renamed.</p>
+        <p class="small muted" style="margin:0">New orders get the first status. Delivered and Cancelled close an order and cannot be renamed.</p>
         <div class="stack" id="st-list">${stEdit.map((x, i) => `<div class="st-row">
           <input data-st="${i}" value="${esc(x.name)}" ${LOCKED.includes(x.old) ? "readonly" : ""} aria-label="Status ${i + 1}">
           <button class="icon-btn" data-act="st-up" data-i="${i}" ${i === 0 ? "disabled" : ""} aria-label="Move up">▲</button>
@@ -1114,29 +1499,31 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
 
       <section class="card section">
         <h2>This device</h2>
-        <div class="f"><span class="small" style="font-weight:600;color:var(--ink-2)">Appearance</span><div class="seg">${[["auto", "Auto"], ["light", "Light"], ["dark", "Dark"]].map(([k, l]) => `<button type="button" data-act="theme" data-theme-set="${k}" class="${device.theme === k ? "on" : ""}">${l}</button>`).join("")}</div></div>
+        <div class="f"><span class="lbl">Appearance</span><div class="seg">${[["auto", "Auto"], ["light", "Light"], ["dark", "Dark"]].map(([k, l]) => `<button type="button" data-act="theme" data-theme-set="${k}" class="${device.theme === k ? "on" : ""}">${l}</button>`).join("")}</div></div>
         <div class="grid2">
-          <label class="f"><span>Order number series</span><input id="d-series" value="${esc(device.series)}" maxlength="10" placeholder="JO-A"></label>
-          <label class="f"><span>Next number</span><input id="d-next" type="number" min="1" step="1" value="${esc(device.next)}"></label>
+          <label class="f"><span>Order series</span><input id="d-series" value="${esc(device.series)}" maxlength="10" placeholder="JO-A"></label>
+          <label class="f"><span>Next order no.</span><input id="d-next" type="number" min="1" step="1" value="${esc(device.next)}"></label>
           <label class="f"><span>Receipt series</span><input id="d-rseries" value="${esc(device.rseries)}" maxlength="12" placeholder="RCT-A"></label>
-          <label class="f"><span>Next receipt</span><input id="d-rnext" type="number" min="1" step="1" value="${esc(device.rnext)}"></label>
+          <label class="f"><span>Next receipt no.</span><input id="d-rnext" type="number" min="1" step="1" value="${esc(device.rnext)}"></label>
+          <label class="f"><span>Quotation series</span><input id="d-qseries" value="${esc(device.qseries)}" maxlength="12" placeholder="QT-A"></label>
+          <label class="f"><span>Next quotation no.</span><input id="d-qnext" type="number" min="1" step="1" value="${esc(device.qnext)}"></label>
         </div>
-        <p class="small muted" style="margin:0">Give every phone or computer its own series, for example JO-A, JO-B, JO-C, so numbers never clash. Next order: <span class="mono">${esc(previewNumber())}</span> · next receipt: <span class="mono">${esc(nextReceipt(true))}</span></p>
+        <p class="small muted" style="margin:0">Give each phone its own series (JO-A, JO-B…). Next: <span class="mono">${esc(nextNumber(true))}</span> · <span class="mono">${esc(nextReceipt(true))}</span> · <span class="mono">${esc(nextQuote(true))}</span></p>
         <button class="btn" data-act="save-device">Save device settings</button>
       </section>
 
-      <section class="card section">
+      <section class="card section" id="sec-sync">
         <h2>Sync between devices</h2>
-        <p class="small muted" style="margin:0">Uses one common Gmail and a Google Drive folder. Paste the sync link and team PIN from the person who set it up (see the setup guide).</p>
+        <p class="small muted" style="margin:0">One common Gmail and a Google Drive folder. Paste the sync link and team PIN from the person who set it up.</p>
         <label class="f"><span>Sync link</span><input id="y-url" value="${esc(sy.url)}" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
         <label class="f"><span>Team PIN</span><input id="y-pin" value="${esc(sy.pin)}" autocomplete="off"></label>
         ${sy.url ? `<p class="small" style="margin:0">${sy.error ? `<span style="color:var(--bad)">Last attempt failed: ${esc(sy.error)}</span>` : sy.lastAt ? `Last synced ${fmtTime(sy.lastAt)}. ${esc(sy.lastMsg)}` : "Not synced yet."} ${dirty.size ? `${dirty.size} change(s) waiting to send.` : ""}</p>` : ""}
-        <div class="btn-row">${sy.url ? `<button class="btn primary" data-act="sync-now">Sync now</button><button class="btn" data-act="sync-test">Test connection</button><button class="btn danger" data-act="sync-off">Turn off</button>` : `<button class="btn primary" data-act="sync-connect">Connect</button>`}</div>
+        <div class="btn-row">${sy.url ? `<button class="btn primary" data-act="sync-now">Sync now</button><button class="btn" data-act="sync-test">Test</button><button class="btn danger" data-act="sync-off">Turn off</button>` : `<button class="btn primary" data-act="sync-connect">Connect</button>`}</div>
       </section>
 
       <section class="card section">
         <h2>Backup</h2>
-        <p class="small muted" style="margin:0">${live(state.orders).length} orders, ${live(state.customers).length} customers, ${live(state.items).length} items. Storage used on this device: ${(used / 1000).toFixed(0)} KB of about 5,000 KB (${pct}%).</p>
+        <p class="small muted" style="margin:0">${jobs().length} orders, ${quotes().length} quotations, ${live(state.customers).length} customers, ${live(state.items).length} items. Storage: ${(used / 1000).toFixed(0)} KB of about 5,000 KB (${pct}%).</p>
         <div class="meter ${pct >= 70 ? "hot" : ""}"><span style="width:${Math.max(pct, 1)}%"></span></div>
         ${pct >= 70 ? `<p class="small" style="margin:0;color:var(--bad)">Storage is getting full. Share a backup file, then delete old delivered orders.</p>` : ""}
         <div class="btn-row">${NATIVE && Plug.Share && Plug.Filesystem ? `<button class="btn primary" data-act="share-backup">Share backup file</button>` : `<button class="btn primary" data-act="download-backup">Save backup file</button>`}<button class="btn" data-act="restore-file">Restore from file</button></div>
@@ -1148,7 +1535,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
 
       <section class="card section">
         <h2>Data</h2>
-        <div class="btn-row">${state.demo ? `<button class="btn primary" data-act="clear-sample">Clear sample data</button>` : `<button class="btn" data-act="load-sample">Load sample data</button>`}<button class="btn danger" data-act="wipe">Delete everything on this device</button></div>
+        <div class="btn-row">${state.demo ? `<button class="btn primary" data-act="clear-sample">Clear sample data</button>` : `<button class="btn" data-act="load-sample">Load sample data</button>`}<button class="btn danger" data-act="wipe">Delete everything here</button></div>
       </section>`;
   };
   function readStatuses() { $$("[data-st]").forEach((el) => { stEdit[Number(el.dataset.st)].name = el.value; }); }
@@ -1161,7 +1548,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     try { s = JSON.parse(text); if (!Array.isArray(s.orders) || !Array.isArray(s.customers) || !Array.isArray(s.items)) throw 0; }
     catch (err) { return toast("That is not a Job Orders backup."); }
     const n = live(s.orders).length;
-    confirmBox("Restore backup", `Replace everything on this device with the backup (${n} orders, ${live(s.customers).length} customers, ${live(s.items).length} items)?${device.sync.url ? " The restored records will also be sent to the shared Drive folder." : ""}`, "Restore", () => {
+    confirmBox("Restore backup", `Replace everything on this device with the backup (${n} orders and quotations, ${live(s.customers).length} customers, ${live(s.items).length} items)?${device.sync.url ? " The restored records will also be sent to the shared Drive folder." : ""}`, "Restore", () => {
       delete s.app; delete s.exportedAt;
       state = migrate({ ...blank(), ...s, v: s.v || 1 });
       if (s.seq && !device.next) device.next = s.seq + 1;
@@ -1245,7 +1632,6 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
         if (dirty.has(k)) return; // changed again here meanwhile; ours goes up next time
         applyRecord(t, r); got++;
       });
-      if (state.demo && got && live(state.orders).length) state.demo = !!state.demo;
       sy.since = j.rev; sy.lastAt = nowIso(); sy.error = "";
       sy.lastMsg = `${changes.length} sent, ${got} received.`;
       persist();
@@ -1275,19 +1661,34 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   setInterval(() => { if (!document.hidden) syncNow(false); }, 60000);
 
   /* ---------- events ---------- */
+  function startDraft(preset) { draft = newDraft(preset); keepDraft(); closeDlg(); go("new"); }
   document.addEventListener("click", async (e) => {
     const wa = NATIVE && e.target.closest("#wa-link");
     if (wa) { e.preventDefault(); window.location.href = wa.href; return; } // Android opens the WhatsApp app
     const tb = e.target.closest("[data-tab]");
-    if (tb) return go(tb.dataset.tab);
+    if (tb) { if (tb.dataset.tab === "new" && tab === "new") return; closeDlg(); return go(tb.dataset.tab); }
     const sf = e.target.closest("[data-status-filter]");
-    if (sf) { filters.status = sf.dataset.statusFilter; return render(); }
+    if (sf) { if (filters.view === "quotes") filters.qstatus = sf.dataset.statusFilter; else filters.status = sf.dataset.statusFilter; return render(); }
+    const dt = e.target.closest("#d-disc-type button");
+    if (dt) { readDraft(); draft.discType = dt.dataset.dt; $$("#d-disc-type button").forEach((x) => x.classList.toggle("on", x === dt)); keepDraft(); return refreshTotals(); }
     const b = e.target.closest("[data-act]");
     if (!b || b.disabled) return;
     const id = b.dataset.id;
     switch (b.dataset.act) {
       case "confirm-yes": { const f = confirmYes; confirmYes = null; closeDlg(); return f && f(); }
+      /* home & navigation */
+      case "go-orders": filters.view = "orders"; filters.status = b.dataset.f || "Open"; return go("orders");
+      case "go-quotes": filters.view = "quotes"; filters.qstatus = "Quote"; return go("orders");
+      case "go-receipts": filters.rperiod = b.dataset.p || "month"; return go("receipts");
+      case "go-settings-sec": go("settings"); { const el = $("#" + b.dataset.sec); if (el) el.scrollIntoView({ block: "start" }); } return;
+      case "quick-new": return startDraft({});
+      case "quick-quote": return startDraft({ kind: "quote" });
+      case "quick-pay": return payPicker();
+      case "orders-view": filters.view = b.dataset.v; return render();
+      case "rep-period": filters.rep = b.dataset.p; return render();
+      case "csv": try { await exportCsv(b.dataset.k); } catch (err) { if (!/cancel|abort/i.test(String(err && (err.message || err)))) toast("Could not export the file."); } return;
       /* editor */
+      case "draft-kind": readDraft(); draft.kind = b.dataset.k; keepDraft(); return render();
       case "add-item": {
         readDraft();
         const it = byId(state.items, $("#d-additem").value);
@@ -1299,25 +1700,46 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       }
       case "add-custom": readDraft(); draft.lines.push({ name: "", spec: "", unit: "pcs", qty: "", price: "", note: "" }); keepDraft(); render(); { const last = $$(".line").pop(); if (last) $('[data-k="name"]', last).focus(); } return;
       case "rm-line": readDraft(); draft.lines.splice(Number(b.dataset.i), 1); keepDraft(); return render();
-      case "clear-draft": draft = newDraft(); keepDraft(); return render();
-      case "save-order": { const o = saveDraft(); if (o) { toast(`${o.no} saved`); go("orders"); } return; }
-      case "save-share": { const o = saveDraft(); if (o) { go("orders"); shareDlg(o); } return; }
+      case "clear-draft": draft = newDraft({ kind: draft.id ? "order" : draft.kind }); keepDraft(); return render();
+      case "save-order": { const o = saveDraft(); if (o) { toast(`${o.no} saved`); filters.view = isQuote(o) ? "quotes" : "orders"; if (isQuote(o)) filters.qstatus = "Quote"; go("orders"); openOrder(o); } return; }
+      case "save-share": { const o = saveDraft(); if (o) { filters.view = isQuote(o) ? "quotes" : "orders"; go("orders"); shareDlg(o, true); } return; }
       /* orders */
       case "open-order": return openOrder(byId(state.orders, id));
       case "share-order": return shareDlg(byId(state.orders, id), true);
-      case "share-back": case "pay-back": return openOrder(byId(state.orders, id));
+      case "next-status": { const o = byId(state.orders, id), nx = nextStatus(o); if (nx) { setStatus(o, nx); openOrder(o); } return; }
+      case "ready-msg": {
+        const o = byId(state.orders, id);
+        const st = state.settings.statuses;
+        if (st.includes("Ready") && st.indexOf(o.status) < st.indexOf("Ready") && !isClosed(o) && o.status !== "On hold") setStatus(o, "Ready");
+        return shareText(`Ready · ${o.no}`, readyMessage(o), o.customer.phone, `data-act="open-order" data-id="${o.id}"`);
+      }
+      case "order-reminder": { const o = byId(state.orders, id); return shareText(`Reminder · ${o.no}`, orderReminder(o), o.customer.phone, `data-act="open-order" data-id="${o.id}"`); }
+      case "cust-reminder": { const c = byId(state.customers, id); return shareText(`Reminder · ${c.name}`, customerReminder(c), c.phone, `data-act="open-customer" data-id="${c.id}"`); }
+      case "call": return openExternal(`tel:${String(b.dataset.phone).replace(/[^\d+]/g, "")}`);
+      case "wa-chat": return openExternal(`https://wa.me/${waPhone(b.dataset.phone)}`);
+      case "mark-delivered": { const o = byId(state.orders, id); setStatus(o, "Delivered"); b.remove(); return; }
+      case "quote-convert": {
+        const qo = byId(state.orders, id);
+        return confirmBox("Convert to job order", `Create a job order from <b>${esc(qo.no)}</b> for ${esc(qo.customer.name)} (${sar(totals(qo).total)})?`, "Create job order", () => {
+          const o = convertQuote(qo); filters.view = "orders"; filters.status = "Open"; go("orders"); openOrder(o); toast(`${o.no} created from ${qo.no}`);
+        });
+      }
+      case "quote-decline": { const o = byId(state.orders, id); o.status = "Declined"; touch("orders", o); save(); render(); openOrder(o); return toast(`${o.no} marked Declined`); }
+      case "quote-reopen": { const o = byId(state.orders, id); o.status = "Quote"; touch("orders", o); save(); render(); openOrder(o); return toast(`${o.no} reopened`); }
       case "open-receipt": return openReceipt(...findPay(id, b.dataset.pid));
       case "share-receipt": { const [o, p] = findPay(id, b.dataset.pid); return shareText(`Send receipt ${p.no || ""}`.trim(), receiptMessage(o, p), o.customer.phone, `data-act="open-receipt" data-id="${o.id}" data-pid="${p.id}"`); }
       case "r-period": filters.rperiod = b.dataset.p; return render();
       case "pdf-order": return pdfDlg("order", byId(state.orders, id));
+      case "pdf-dn": return pdfDlg("dn", byId(state.orders, id));
+      case "pdf-statement": return pdfDlg("statement", byId(state.customers, id));
       case "pdf-receipt": { const [o, p] = findPay(id, b.dataset.pid); return pdfDlg("receipt", o, p); }
       case "pdf-share": if (!lastPdf) return; try { await sharePdf(lastPdf); } catch (err) { if (!/cancel|abort/i.test(String(err && (err.message || err)))) toast("Could not share the PDF."); } return;
-      case "pdf-save": if (lastPdf) { savePdfFile(lastPdf); toast(`Saved ${lastPdf.name}`); } return;
+      case "pdf-save": if (lastPdf) { saveBlob(lastPdf.blob, lastPdf.name); toast(`Saved ${lastPdf.name}`); } return;
       case "logo-pick": { const f = $("#logo-file"); f.value = ""; return f.click(); }
       case "logo-remove": state.settings.logo = ""; touch("settings", state.settings); save(); render(); return toast("Logo removed");
       case "copy-msg": return toast((await copy($("#msg").value)) ? "Copied. Paste it in WhatsApp." : "Select the text and copy it manually.");
       case "share-other":
-        try { await Plug.Share.share({ text: $("#msg").value, dialogTitle: "Send order with…" }); } catch (err) { /* closed */ }
+        try { await Plug.Share.share({ text: $("#msg").value, dialogTitle: "Send with…" }); } catch (err) { /* closed */ }
         return;
       case "add-payment": return paymentDlg(byId(state.orders, id), false);
       case "mark-paid": return paymentDlg(byId(state.orders, id), true);
@@ -1329,28 +1751,29 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
         const method = ($("#p-method .on") || {}).dataset?.m || "Cash";
         const pay = { id: uid(), no: nextReceipt(), date: $("#p-date").value || today(), amount: amt / 100, method, note: $("#p-note").value.trim() };
         o.payments.push(pay);
-        touch("orders", o); save(); if (tab === "orders" || tab === "receipts") render();
+        touch("orders", o); save(); if (tab !== "new") render();
         openReceipt(o, pay);
         return toast(totals(o).bal <= 0 ? `${o.no} fully paid · receipt ${pay.no}` : `Receipt ${pay.no} saved`);
       }
       case "del-payment": {
         const o = byId(state.orders, id), p = o.payments.find((x) => x.id === b.dataset.pid);
         return confirmBox("Delete payment", `Delete the ${esc(p.method)} payment of <b>${sar(hal(p.amount))}</b> on ${fmtDate(p.date)} from ${esc(o.no)}?`, "Delete payment", () => {
-          o.payments = o.payments.filter((x) => x.id !== p.id); touch("orders", o); save(); if (tab === "orders" || tab === "receipts") render(); openOrder(o); toast(`${p.no ? "Receipt " + p.no : "Payment"} deleted`);
+          o.payments = o.payments.filter((x) => x.id !== p.id); touch("orders", o); save(); if (tab !== "new") render(); openOrder(o); toast(`${p.no ? "Receipt " + p.no : "Payment"} deleted`);
         });
       }
       case "edit-order": {
         const o = byId(state.orders, id);
-        draft = { id: o.id, customerId: o.customerId, lines: o.lines.map((l) => ({ ...l })), vat: o.vat, vatRate: o.vatRate, notes: o.notes, date: o.date, dueDate: o.dueDate };
+        const d = o.discount || {};
+        draft = { id: o.id, kind: isQuote(o) ? "quote" : "order", customerId: o.customerId, lines: o.lines.map((l) => ({ ...l })), vat: o.vat, vatRate: o.vatRate, notes: o.notes, date: o.date, dueDate: o.dueDate, validUntil: o.validUntil || "", discType: d.type === "pct" ? "pct" : "amt", discVal: d.value || "" };
         if (!byId(state.customers, o.customerId)) draft.customerId = "";
         keepDraft(); closeDlg(); return go("new");
       }
       case "dup-order": {
-        const o = byId(state.orders, id);
-        draft = newDraft({ customerId: byId(state.customers, o.customerId) ? o.customerId : "", lines: o.lines.map((l) => ({ ...l })), vat: o.vat, vatRate: o.vatRate, notes: o.notes });
-        keepDraft(); closeDlg(); go("new"); return toast(`Copied ${o.no} into a new order`);
+        const o = byId(state.orders, id), d = o.discount || {};
+        startDraft({ kind: isQuote(o) ? "quote" : "order", customerId: byId(state.customers, o.customerId) ? o.customerId : "", lines: o.lines.map((l) => ({ ...l })), vat: o.vat, vatRate: o.vatRate, notes: o.notes, discType: d.type === "pct" ? "pct" : "amt", discVal: d.value || "" });
+        return toast(`Copied ${o.no} into a new ${isQuote(o) ? "quotation" : "order"}`);
       }
-      case "del-order": { const o = byId(state.orders, id); return confirmBox("Delete order", `Delete <b>${esc(o.no)}</b> for ${esc(o.customer.name)}? This cannot be undone.`, "Delete order", () => { o.deleted = true; touch("orders", o); save(); render(); toast(`${o.no} deleted`); }); }
+      case "del-order": { const o = byId(state.orders, id); return confirmBox(`Delete ${isQuote(o) ? "quotation" : "order"}`, `Delete <b>${esc(o.no)}</b> for ${esc(o.customer.name)}? This cannot be undone.`, "Delete", () => { o.deleted = true; touch("orders", o); save(); render(); toast(`${o.no} deleted`); }); }
       /* customers */
       case "new-customer": return customerForm(null, b.dataset.for === "draft");
       case "open-customer": return openCustomer(byId(state.customers, id));
@@ -1365,7 +1788,8 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
         if (b.dataset.for === "draft") { readDraft(); draft.customerId = c.id; keepDraft(); }
         save(); closeDlg(); render(); return toast(id ? "Customer updated" : "Customer saved");
       }
-      case "order-for": if (draft.id) draft = newDraft(); draft.customerId = id; keepDraft(); closeDlg(); return go("new");
+      case "order-for": return startDraft({ customerId: id });
+      case "quote-for": return startDraft({ customerId: id, kind: "quote" });
       case "del-customer": { const c = byId(state.customers, id); return confirmBox("Delete customer", `Delete <b>${esc(c.name)}</b>? Their saved orders stay in the Orders list.`, "Delete customer", () => { c.deleted = true; touch("customers", c); if (draft.customerId === id) draft.customerId = ""; save(); render(); toast("Customer deleted"); }); }
       /* items */
       case "new-item": return itemForm(null);
@@ -1385,9 +1809,9 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       case "save-settings": {
         const rate = Number($("#s-rate").value), dueRaw = $("#s-due").value.trim();
         if (!(rate >= 0 && rate <= 100)) { $("#s-rate").classList.add("invalid"); return toast("VAT rate must be between 0 and 100."); }
-        Object.assign(state.settings, { companyName: $("#s-company").value.trim(), phone: $("#s-phone").value.trim(), address: $("#s-address").value.trim(), email: $("#s-email").value.trim(), footer: $("#s-footer").value.trim(), vatDefault: $("#s-vat").checked, vatRate: rate, dueDays: dueRaw === "" ? "" : Math.max(0, parseInt(dueRaw, 10) || 0) });
+        Object.assign(state.settings, { companyName: $("#s-company").value.trim(), phone: $("#s-phone").value.trim(), address: $("#s-address").value.trim(), email: $("#s-email").value.trim(), bankName: $("#s-bank").value.trim(), iban: $("#s-iban").value.trim().toUpperCase(), footer: $("#s-footer").value.trim(), vatDefault: $("#s-vat").checked, vatRate: rate, dueDays: dueRaw === "" ? "" : Math.max(0, parseInt(dueRaw, 10) || 0) });
         touch("settings", state.settings);
-        if (!draft.lines.length && !draft.id) { draft = newDraft({ customerId: draft.customerId }); keepDraft(); }
+        if (!draft.lines.length && !draft.id) { draft = newDraft({ customerId: draft.customerId, kind: draft.kind }); keepDraft(); }
         save(); render(); return toast("Company settings saved");
       }
       case "st-add": readStatuses(); stEdit.splice(stEdit.length - 2, 0, { old: "", name: "" }); render(); { const el = $$("[data-st]")[stEdit.length - 3]; if (el) el.focus(); } return;
@@ -1399,27 +1823,29 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
         if (names.some((n) => !n)) return toast("A status name is empty. Type a name or delete it.");
         if (new Set(names.map((n) => n.toLowerCase())).size !== names.length) return toast("Two statuses have the same name.");
         stEdit.forEach((x, i) => {
-          if (x.old && x.old !== names[i]) state.orders.forEach((o) => { if (o.status === x.old) { o.status = names[i]; touch("orders", o); } });
+          if (x.old && x.old !== names[i]) state.orders.forEach((o) => { if (!isQuote(o) && o.status === x.old) { o.status = names[i]; touch("orders", o); } });
         });
         state.settings.statuses = names; touch("settings", state.settings);
         stEdit = null; save(); render(); return toast("Statuses saved");
       }
       case "theme": device.theme = b.dataset.themeSet; applyTheme(); persist(); return render();
       case "save-device": {
-        const series = $("#d-series").value.trim().toUpperCase(), next = parseInt($("#d-next").value, 10);
-        let rseries = $("#d-rseries").value.trim().toUpperCase().replace(/-+$/, "");
-        const rnext = parseInt($("#d-rnext").value, 10);
-        if (rseries === receiptSeriesFor(device.series)) rseries = receiptSeriesFor(series.replace(/-+$/, "")); // follow the order series unless customised
-        if (!/^[A-Z0-9][A-Z0-9-]{0,11}$/.test(rseries)) { $("#d-rseries").classList.add("invalid"); return toast("Receipt series can use letters, numbers and dashes, for example RCT-A."); }
-        if (!(rnext >= 1)) { $("#d-rnext").classList.add("invalid"); return toast("Next receipt must be 1 or more."); }
-        if (!/^[A-Z0-9][A-Z0-9-]{0,9}$/.test(series)) { $("#d-series").classList.add("invalid"); return toast("Series can use letters, numbers and dashes, for example JO-A."); }
-        if (!(next >= 1)) { $("#d-next").classList.add("invalid"); return toast("Next number must be 1 or more."); }
-        const newSeries = series.replace(/-+$/, "");
+        const up = (sel) => $(sel).value.trim().toUpperCase().replace(/-+$/, "");
+        const series = up("#d-series"), next = parseInt($("#d-next").value, 10);
+        let rseries = up("#d-rseries"), qseries = up("#d-qseries");
+        const rnext = parseInt($("#d-rnext").value, 10), qnext = parseInt($("#d-qnext").value, 10);
+        if (rseries === seriesFor(device.series, "RCT")) rseries = seriesFor(series, "RCT"); // follow the order series unless customised
+        if (qseries === seriesFor(device.series, "QT")) qseries = seriesFor(series, "QT");
+        for (const [v, sel, label] of [[series, "#d-series", "Order series"], [rseries, "#d-rseries", "Receipt series"], [qseries, "#d-qseries", "Quotation series"]]) {
+          if (!/^[A-Z0-9][A-Z0-9-]{0,11}$/.test(v)) { $(sel).classList.add("invalid"); return toast(`${label} can use letters, numbers and dashes, for example JO-A.`); }
+        }
+        for (const [v, sel] of [[next, "#d-next"], [rnext, "#d-rnext"], [qnext, "#d-qnext"]]) if (!(v >= 1)) { $(sel).classList.add("invalid"); return toast("Next numbers must be 1 or more."); }
         // a new series starts again at 1 unless the number was changed by hand (existing numbers are still skipped)
-        device.next = newSeries !== device.series && next === device.next ? 1 : next;
+        device.next = series !== device.series && next === device.next ? 1 : next;
         device.rnext = rseries !== device.rseries && rnext === device.rnext ? 1 : rnext;
-        device.series = newSeries; device.rseries = rseries; persist(); render();
-        return toast(`Next order ${previewNumber()} · next receipt ${nextReceipt(true)}`);
+        device.qnext = qseries !== device.qseries && qnext === device.qnext ? 1 : qnext;
+        device.series = series; device.rseries = rseries; device.qseries = qseries; persist(); render();
+        return toast(`Next: ${nextNumber(true)} · ${nextReceipt(true)} · ${nextQuote(true)}`);
       }
       case "sync-connect": case "sync-test": {
         const url = (b.dataset.act === "sync-connect" ? $("#y-url").value : device.sync.url).trim(), pin = (b.dataset.act === "sync-connect" ? $("#y-pin").value : device.sync.pin).trim();
@@ -1459,16 +1885,10 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
         } catch (err) { if (err && !/cancel/i.test(String(err.message || err))) toast("Could not share the backup file."); }
         return;
       }
-      case "download-backup": {
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(new Blob([backupJson()], { type: "application/json" }));
-        a.download = backupName(); document.body.appendChild(a); a.click();
-        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
-        return toast(`Saved ${backupName()} to Downloads`);
-      }
+      case "download-backup": saveBlob(new Blob([backupJson()], { type: "application/json" }), backupName()); return toast(`Saved ${backupName()} to Downloads`);
       case "restore-file": { const f = $("#restore-file"); f.value = ""; return f.click(); }
       case "restore": return restoreFrom($("#s-restore").value);
-      case "clear-sample": return confirmBox("Clear sample data", "Remove the sample customers, items and orders? Anything you added yourself is kept.", "Clear samples", () => { const r = removeSamples(); if (state.settings.updatedAt.startsWith("1970")) state.settings.updatedAt = nowIso(); if (!live(state.orders).length) device.next = 1; draft = newDraft(); keepDraft(); stEdit = null; save(); render(); toast(`Samples removed. Kept ${r.kept.o} orders, ${r.kept.c} customers, ${r.kept.i} items.`); });
+      case "clear-sample": return confirmBox("Clear sample data", "Remove the sample customers, items and orders? Anything you added yourself is kept.", "Clear samples", () => { const r = removeSamples(); if (state.settings.updatedAt.startsWith("1970")) state.settings.updatedAt = nowIso(); if (!jobs().length) device.next = 1; if (!quotes().length) device.qnext = 1; draft = newDraft(); keepDraft(); stEdit = null; save(); render(); toast(`Samples removed. Kept ${r.kept.o} orders, ${r.kept.c} customers, ${r.kept.i} items.`); });
       case "load-sample": return confirmBox("Load sample data", "Replace everything on this device with sample data? Share a backup first if you want to keep your records.", "Load samples", () => { state = sample(); dirty.clear(); draft = newDraft(); keepDraft(); stEdit = null; persist(); render(); toast("Sample data loaded"); });
       case "wipe": return confirmBox("Delete everything", `Delete all orders, customers, items and settings on this device? This cannot be undone.${device.sync.url ? " The shared Drive folder is not changed." : ""}`, "Delete everything", () => { state = blank(); state.demo = false; dirty.clear(); device.sync.since = 0; draft = newDraft(); keepDraft(); stEdit = null; persist(); render(); toast("All data deleted on this device"); });
     }
@@ -1500,12 +1920,13 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   if (NATIVE && Plug.App) {
     Plug.App.addListener("backButton", () => {
       if (dlg.open) closeDlg();
-      else if (tab !== "new") go("new");
+      else if (NAV_OF[tab]) go("more");
+      else if (tab !== "home") go("home");
       else Plug.App.exitApp();
     });
   }
 
-  go(["new", "orders", "receipts", "customers", "items", "settings"].includes(tab) ? tab : "new");
+  go(PAGES.includes(tab) ? tab : "home");
   if (device.sync.url) syncNow(false);
 })();
 </script>

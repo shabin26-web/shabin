@@ -1,53 +1,65 @@
-# Job Orders (Job Order Sender)
+# Job Orders
 
-A phone-friendly app for a printing shop to create job orders and send them on WhatsApp.
+A phone-friendly app for a printing shop to create job orders and quotations, take payments,
+and send everything on WhatsApp as text or PDF.
 
-1. **Items**: save products once (name, details such as size/paper/colours, unit, default price).
-   Details show in *italics* in the app and in WhatsApp.
-2. **Customers**: name, WhatsApp number, company, notes. Tap a customer for all previous orders
-   and how much they owe.
-3. **New order**: pick a customer, add items, quantities and prices, an optional delivery date,
-   an optional amount paid now (cash, bank transfer, card/mada), notes, VAT on/off.
-4. **Save & send on WhatsApp**: the order gets this device's next number (e.g. `JO-A-0001`) and
-   opens the message to edit, copy or send.
-5. **Orders**: search; filter by status, **Due pending** or **Paid**; total due at the top.
-   Tap an order to change status, **Add payment**, **Mark fully paid**, send again, edit,
-   duplicate or delete.
+## Screens
 
-6. **Receipts**: every payment gets a receipt number (e.g. `RCT-A-0001`, per device). The
-   Receipts tab lists them for Today / This month / Last month / All with totals by payment method;
-   tap one for the receipt details and **Send receipt** on WhatsApp (amount, method, order, paid to
-   date and balance).
+- **Home**: today at a glance — due today, overdue, in progress, due pending, collected today and
+  this month; quick buttons New order, New quotation, Record payment; deliveries due today/overdue
+  and recent orders.
+- **Orders**: job orders and quotations (switch at the top); search; filters Open, Due today,
+  Overdue, Due pending, Paid, any status; total due pending.
+- **＋ New**: job order or quotation — customer, saved or custom items (details in *italics*),
+  quantities and prices, optional delivery date / valid-until date, **discount** (SAR or %),
+  optional amount paid now, VAT on/off, notes. Totals: subtotal → discount → VAT → total.
+- **Receipts**: every payment with receipt number (e.g. `RCT-A-0001`), period filters, totals by
+  payment method.
+- **More**: Customers, Items, Quotations, **Reports**, Settings, Sync & backup.
 
-7. **PDF**: on an order or a receipt tap **PDF** to create an A5 PDF (logo, company name,
-   contact number, address, email; items with details, totals, payments / receipt amount and
-   balance) and **Share PDF** to WhatsApp, email or Drive. Long orders continue on extra pages.
-   Set the logo, address and email in **Settings → Company**. PDFs are made on the device and
-   work offline (libraries in `vendor/`: jsPDF and html2canvas, MIT).
+## Order sheet (tap an order)
 
-Dates show as `01-Oct-26`. Statuses (New → Design → Waiting approval → Approved → Printing →
-Finishing → Ready → Delivered, On hold, Cancelled) can be renamed, added and reordered in
-Settings. Appearance can be Auto, Light or Dark.
+Next status in one tap (e.g. *→ Printing*), **Ready message** (tells the customer the job is ready,
+with balance), **Reminder** (balance due with bank details), **Call**, **PDF**, **Delivery note**
+(PDF without prices, with signature lines; then *Mark as Delivered*), payments (Add payment / Mark
+fully paid → receipt), Edit, Duplicate, Delete, Send on WhatsApp.
+
+Quotations (`QT-A-0001`): Send, PDF, **Convert to order** (creates the next job order number and
+marks the quote Converted), Declined / Reopen. Quotations are not counted in sales or dues.
+
+## Customers
+
+Call, WhatsApp chat, **Reminder** for all unpaid orders, **Statement PDF** (orders, receipts,
+running balance), new order or quotation, order history.
+
+## Reports
+
+This month / Last month / This year / All time: sales, collected, due pending, average order,
+month-by-month table, top customers and top items, **Export to Excel (CSV)** for orders, order
+items and receipts.
+
+## Settings
+
+Company name, contact number, address, email, logo, bank name and IBAN (used in reminders and PDFs),
+message footer, VAT, default delivery days, order statuses, appearance (Auto/Light/Dark), number
+series per device (orders, receipts, quotations), sync, backup.
+
+Dates show as `01-Oct-26`. Money is calculated in halalas and rounded per line.
 
 ## Open it
 
-- **Android app:** download
-  https://github.com/shabin26-web/shabin/releases/download/job-orders-latest/job-orders.apk
-  on the phone and tap Install. See [job-order-android/README.md](../job-order-android/README.md).
+- **Android app:** https://github.com/shabin26-web/shabin/releases/download/job-orders-latest/job-orders.apk
+  (see [job-order-android/README.md](../job-order-android/README.md)).
 - **Computer:** double-click `job-order-app/index.html`.
 
 ## Several devices
 
-- Give each device its own **order number series** (Settings → This device), e.g. `JO-A`, `JO-B`.
-- To share the same data on all devices, set up **sync** with one common Gmail and a Google Drive
-  folder: [job-order-sync/README.md](../job-order-sync/README.md).
+Give each device its own series (Settings → This device), e.g. `JO-A`, `JO-B`. Share data through
+one common Gmail and a Google Drive folder: [job-order-sync/README.md](../job-order-sync/README.md).
+**Update every device to the same app version**: older versions do not understand discounts and
+quotations and would show them wrongly.
 
 ## Backup
 
-**Settings → Backup → Share backup file** (Android) or **Save backup file** (computer) creates
-`job-orders-backup-01-Oct-26.json`. Keep it in Google Drive, WhatsApp or email.
-**Restore from file** loads it on any device. 1,000 orders make a file of about 0.6 MB, and the
-device can hold several thousand orders; Settings shows how much space is used.
-With sync on, the Drive folder also keeps a daily backup for 90 days.
-
-Money is calculated in halalas and rounded per line; VAT is charged on the subtotal.
+Settings → Backup → **Share backup file** (Android) or **Save backup file** (computer);
+**Restore from file** on any device. With sync on, the Drive folder keeps a daily backup for 90 days.

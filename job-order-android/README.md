@@ -25,6 +25,9 @@ your orders, customers and items (older data is upgraded automatically).
 
 ## In the app
 
+- The app starts below the phone's status bar (time and notifications); the status-bar icons follow
+  the Light/Dark setting.
+
 - **Open WhatsApp** opens the WhatsApp app with the message ready for the customer's number.
 - **Other apps** shares the order text to any app (Telegram, SMS, email…).
 - **PDF** (on an order or a receipt) creates an A5 PDF and **Share PDF** sends it; in WhatsApp
