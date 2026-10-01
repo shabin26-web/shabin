@@ -61,7 +61,7 @@ function doGet() {
 function doPost(e) {
   let req;
   try { req = JSON.parse(e.postData.contents); } catch (err) { return json_({ ok: false, error: "Bad request." }); }
-  if (TEAM_PIN === "CHANGE-ME") return json_({ ok: false, error: "The sync script still has the default PIN. Set TEAM_PIN and deploy a new version." });
+  if (!TEAM_PIN || /^change/i.test(TEAM_PIN)) return json_({ ok: false, error: "The sync script still has the default PIN. Set TEAM_PIN and deploy a new version." });
   if (String(req.pin || "") !== String(TEAM_PIN)) return json_({ ok: false, error: "Wrong team PIN." });
   if (req.action === "ping") return json_({ ok: true, folder: FOLDER_NAME, time: new Date().toISOString() });
   if (req.action !== "sync") return json_({ ok: false, error: "Unknown request." });
