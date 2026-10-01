@@ -63,3 +63,6 @@ jobs:
 
       - name: Run money and invoice logic tests
         run: node --test printing-ops/tests/*.test.js
+
+      - name: Run Job Orders sync merge tests
+        run: node --test job-order-sync/tests/*.test.js

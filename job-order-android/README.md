@@ -19,14 +19,17 @@ the app changes, and published here:
 ## Updates
 
 Download and install the APK again from the same link. It installs over the old version and keeps
-your orders, customers and items. **Uninstalling the app deletes its data**, so use
-*Settings → Share backup* first (save it to Google Drive or send it to yourself on WhatsApp).
+your orders, customers and items (older data is upgraded automatically).
+**Uninstalling the app deletes its data**, so use *Settings → Share backup file* first
+(save it to Google Drive or send it to yourself on WhatsApp), or turn on sync.
 
 ## In the app
 
 - **Open WhatsApp** opens the WhatsApp app with the message ready for the customer's number.
 - **Other apps** shares the order text to any app (Telegram, SMS, email…).
-- **Share backup** saves your data as text to Google Drive, WhatsApp or email.
+- **Share backup file** saves all your data as a file to Google Drive, WhatsApp or email.
+- **Sync** shares the same data across phones through one common Gmail: see
+  [job-order-sync/README.md](../job-order-sync/README.md).
 - The phone's **Back** button closes a window, then returns to *New order*, then exits.
 
 ## For developers

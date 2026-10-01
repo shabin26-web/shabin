@@ -150,10 +150,33 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .chip { flex: none; border: 1px solid var(--line); background: var(--card); color: var(--ink-2); border-radius: 999px; padding: 7px 12px; font: 500 13px var(--f-body); cursor: pointer; }
 .chip.on { background: var(--ink); border-color: var(--ink); color: var(--card); }
 .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-.pill.New { background: var(--info-soft); color: var(--info); }
-.pill.In-progress { background: var(--warn-soft); color: var(--warn); }
-.pill.Ready { background: var(--good-soft); color: var(--good); }
-.pill.Delivered { background: var(--line-2); color: var(--ink-2); }
+.pill { background: var(--line-2); color: var(--ink-2); }
+.pill.info { background: var(--info-soft); color: var(--info); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.done { background: var(--line-2); color: var(--ink-2); }
+.pills { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.spec { font-style: italic; }
+.due-sum { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; }
+.due-sum b { font: 600 17px var(--f-mono); }
+.due-sum b.has { color: var(--bad); }
+.pay-list { display: flex; flex-direction: column; gap: 6px; }
+.pay-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; font-size: 14px; padding: 8px 10px; border: 1px solid var(--line-2); border-radius: 8px; }
+.seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg button { background: var(--card); border: 0; border-right: 1px solid var(--line); min-height: 44px; font: 500 14px var(--f-body); color: var(--ink-2); cursor: pointer; }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: var(--accent); color: var(--card); }
+.st-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 6px; align-items: center; }
+.st-row .icon-btn { width: 36px; height: 36px; font-size: 16px; }
+.icon-btn:disabled { opacity: .3; cursor: not-allowed; }
+.meter { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.meter span { display: block; height: 100%; background: var(--accent); }
+.meter.hot span { background: var(--bad); }
+.sync-ind { font-size: 12px; color: var(--ink-3); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; cursor: pointer; padding: 6px 0; font-family: var(--f-body); }
+.sync-ind::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
+.sync-ind.err::before { background: var(--bad); }
+.sync-ind.busy::before { background: var(--warn); }
 .empty { text-align: center; color: var(--ink-3); padding: 28px 12px; border: 1px dashed var(--line); border-radius: 12px; }
 
 /* dialog */
@@ -162,6 +185,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
 .dlg { display: flex; flex-direction: column; max-height: calc(100dvh - 24px); }
 .dlg-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 16px 10px; border-bottom: 1px solid var(--line-2); }
 .dlg-body { padding: 16px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+.dlg-body > * { flex-shrink: 0; }
 .dlg-foot { padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line-2); display: flex; flex-wrap: wrap; gap: 8px; }
 .dlg-foot > .btn { flex: 1 1 120px; }
 .close { background: none; border: 0; font-size: 26px; line-height: 1; color: var(--ink-3); cursor: pointer; width: 40px; height: 40px; border-radius: 8px; }
@@ -197,6 +221,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
 <main class="wrap">
   <header class="top">
     <div class="brand"><span class="mark" aria-hidden="true">JO</span><div><b id="brand-name">Job Orders</b><small>Create · Save · Send on WhatsApp</small></div></div>
+    <button type="button" id="sync-ind" class="sync-ind" data-act="sync-now" hidden></button>
   </header>
   <div id="banner" class="banner" hidden></div>
   <div id="view"></div>
@@ -208,16 +233,24 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   <div class="dlg-foot" id="dlg-foot"></div>
 </div></dialog>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<input type="file" id="restore-file" accept=".json,application/json,text/plain" hidden>
 
 <script>
 (function () {
   "use strict";
-  const KEY = "joborders.v1";
+  const KEY = "joborders.v1";            // shared data (orders, customers, items, shared settings)
+  const DKEY = KEY + ".device";           // this device only (series, theme, sync link)
   // Inside the Android app (Capacitor) a few things use native plugins instead of browser APIs.
   const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
   const Plug = NATIVE ? window.Capacitor.Plugins || {} : {};
-  const STATUSES = ["New", "In progress", "Ready", "Delivered"];
+  const DEFAULT_STATUSES = ["New", "Design", "Waiting approval", "Approved", "Printing", "Finishing", "Ready", "Delivered", "On hold", "Cancelled"];
+  const LOCKED = ["Delivered", "Cancelled"];   // closed statuses keep their meaning, so they cannot be renamed
+  const STATUS_TONE = { New: "info", Design: "info", "Waiting approval": "warn", Approved: "info", Printing: "warn", Finishing: "warn", Ready: "good", Delivered: "done", "On hold": "bad", Cancelled: "bad" };
+  const METHODS = ["Cash", "Bank transfer", "Card / mada", "Other"];
   const UNITS = ["pcs", "box", "set", "pack", "sheet", "book", "sqm", "m", "roll", "job"];
+  const TYPES = ["customers", "items", "orders"];
+  const SHARED = ["companyName", "phone", "footer", "vatDefault", "vatRate", "dueDays", "statuses"];
+  const QUOTA = 5000000; // localStorage holds about 5 million characters
   const WA_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg>';
 
   /* ---------- helpers ---------- */
@@ -225,9 +258,13 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+  const nowIso = () => new Date().toISOString();
   function today() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
   function addDays(iso, n) { const d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
-  function fmtDate(iso) { if (!iso) return "—"; const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; }
+  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  /** 2026-10-01 -> 01-Oct-26 */
+  function fmtDate(iso) { if (!iso) return ""; const [y, m, d] = iso.split("-"); return `${d}-${MON[Number(m) - 1]}-${y.slice(2)}`; }
+  function fmtTime(iso) { const d = new Date(iso); return isNaN(d) ? "" : `${fmtDate(new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10))} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; }
   // money is kept in halalas (integer 1/100 SAR) for every calculation
   const hal = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.sign(n) * Math.round(Math.abs(n) * 100) : 0; };
   const lineHal = (qty, price) => { const v = (Number(qty) || 0) * (Number(price) || 0); return Math.sign(v) * Math.round(Math.abs(v) * 100); };
@@ -246,19 +283,30 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     const rate = o.vat ? Number(o.vatRate || 15) : 0;
     const vat = Math.round((sub * rate) / 100);
     const total = sub + vat;
-    const adv = hal(o.advance || 0);
-    return { sub, rate, vat, total, adv, bal: total - adv };
+    const paid = (o.payments || []).reduce((s, p) => s + hal(p.amount), 0);
+    return { sub, rate, vat, total, paid, bal: total - paid };
   }
+  function payState(o) {
+    const t = totals(o);
+    if (t.total > 0 && t.bal <= 0) return { label: "Paid", tone: "good" };
+    if (t.paid > 0) return { label: "Partly paid", tone: "warn" };
+    return { label: "Due", tone: "bad" };
+  }
+  const isClosed = (o) => o.status === "Delivered" || o.status === "Cancelled";
+  const tone = (s) => STATUS_TONE[s] || "";
 
   /* ---------- state ---------- */
-  const DEFAULT_SETTINGS = { companyName: "", phone: "", footer: "Thank you for your order.", vatDefault: true, vatRate: 15, dueDays: 3 };
+  const DEFAULT_SETTINGS = { companyName: "", phone: "", footer: "Thank you for your order.", vatDefault: true, vatRate: 15, dueDays: "", statuses: DEFAULT_STATUSES.slice() };
   let storageOk = true;
-  function blank() { return { settings: { ...DEFAULT_SETTINGS }, customers: [], items: [], orders: [], seq: 0, demo: false }; }
+  let syncing = false, syncTimer = null;
+  const retouched = new Set(); // records changed while a sync request is in flight
+  function blank() { return { v: 2, settings: { ...DEFAULT_SETTINGS, statuses: DEFAULT_STATUSES.slice(), updatedAt: nowIso() }, customers: [], items: [], orders: [], demo: false }; }
   function sample() {
     const s = blank();
     s.demo = true;
-    s.settings = { ...DEFAULT_SETTINGS, companyName: "Al Waha Printing (Sample)", phone: "+966 12 000 0000" };
-    const it = (name, unit, price, spec) => ({ id: uid(), name, unit, price, spec });
+    s.settings = { ...s.settings, companyName: "Al Waha Printing (Sample)", phone: "+966 12 000 0000", dueDays: 3 };
+    const at = nowIso();
+    const it = (name, unit, price, spec) => ({ id: uid(), name, unit, price, spec, updatedAt: at });
     s.items = [
       it("Business cards", "pcs", 0.15, "85×55 mm, 350 gsm art card, 4/4, matt lamination"),
       it("Flyers A5", "pcs", 0.35, "148×210 mm, 150 gsm gloss, 4/4"),
@@ -267,44 +315,120 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       it("Stickers round", "pcs", 0.25, "Ø 60 mm, vinyl, die-cut"),
       it("Flex banner", "sqm", 35, "Flex 440 g, eyelets every 50 cm"),
     ];
-    const cu = (name, phone, company, notes) => ({ id: uid(), name, phone, company, notes });
+    const cu = (name, phone, company, notes) => ({ id: uid(), name, phone, company, notes, updatedAt: at });
     s.customers = [
       cu("Ahmed Al-Harbi", "0550000001", "Red Sea Dental Clinics", "Al Rawdah branch"),
       cu("Sara Al-Ghamdi", "0550000002", "Café Balad", ""),
       cu("Omar Saleh", "0550000003", "Obhur Events Co.", "Prefers delivery after 4 pm"),
     ];
     const t = today();
-    const mk = (ci, lines, status, d, adv, notes) => {
-      s.seq += 1;
+    let n = 0;
+    const mk = (ci, lines, status, d, pays, notes, due = 3) => {
+      n += 1;
       const c = s.customers[ci];
-      return { id: uid(), no: `JO-${String(s.seq).padStart(4, "0")}`, date: addDays(t, d), dueDate: addDays(t, d + 3), customerId: c.id, customer: { name: c.name, phone: c.phone, company: c.company }, lines, vat: true, vatRate: 15, advance: adv, notes, status, createdAt: addDays(t, d) };
+      return { id: uid(), no: `JO-${String(n).padStart(4, "0")}`, date: addDays(t, d), dueDate: due === null ? "" : addDays(t, d + due), customerId: c.id, customer: { name: c.name, phone: c.phone, company: c.company }, lines, vat: true, vatRate: 15, notes, status, createdAt: addDays(t, d), updatedAt: at,
+        payments: pays.map(([amt, m, off]) => ({ id: uid(), date: addDays(t, d + off), amount: amt, method: m, note: "" })) };
     };
     const L = (i, qty, price, note = "") => { const x = s.items[i]; return { name: x.name, spec: x.spec, unit: x.unit, qty, price: price ?? x.price, note }; };
     s.orders = [
-      mk(0, [L(0, 1000), L(3, 500)], "Delivered", -9, 200, ""),
-      mk(1, [L(4, 2000, 0.2), L(1, 1000)], "Ready", -3, 0, "Logo file received on WhatsApp."),
-      mk(2, [L(2, 2), L(5, 12)], "In progress", -1, 500, "Deliver to Obhur venue."),
+      mk(0, [L(0, 1000), L(3, 500)], "Delivered", -9, [[200, "Cash", 0], [317.5, "Bank transfer", 4]], ""),
+      mk(1, [L(4, 2000, 0.2), L(1, 1000)], "Ready", -3, [], "Logo file received on WhatsApp."),
+      mk(2, [L(2, 2), L(5, 12)], "Printing", -1, [[500, "Cash", 0]], "Deliver to Obhur venue."),
+      mk(0, [L(1, 500)], "Waiting approval", 0, [], "Send proof before printing.", null),
     ];
     return s;
   }
-  function load() {
-    try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw); return { ...blank(), ...s, settings: { ...DEFAULT_SETTINGS, ...s.settings } }; } }
+  /** Bring older saved data up to the current shape. */
+  function migrate(s) {
+    s.settings = { ...DEFAULT_SETTINGS, ...s.settings };
+    if (!Array.isArray(s.settings.statuses) || !s.settings.statuses.length) s.settings.statuses = DEFAULT_STATUSES.slice();
+    LOCKED.forEach((x) => { if (!s.settings.statuses.includes(x)) s.settings.statuses.push(x); });
+    if (!s.settings.updatedAt) s.settings.updatedAt = nowIso();
+    ["customers", "items", "orders"].forEach((t) => { s[t] = (s[t] || []).map((r) => (r.updatedAt ? r : { ...r, updatedAt: nowIso() })); });
+    if (!s.v || s.v < 2) {
+      s.orders.forEach((o) => {
+        if (!Array.isArray(o.payments)) o.payments = [];
+        if (o.advance && hal(o.advance) > 0) o.payments.push({ id: uid(), date: o.date, amount: hal(o.advance) / 100, method: "Cash", note: "Advance" });
+        delete o.advance;
+        if (o.status === "In progress") o.status = "Printing";
+        if (!s.settings.statuses.includes(o.status)) s.settings.statuses.splice(s.settings.statuses.length - 2, 0, o.status);
+      });
+      s.v = 2;
+    }
+    s.orders.forEach((o) => { if (!Array.isArray(o.payments)) o.payments = []; });
+    return s;
+  }
+  function loadState() {
+    try { const raw = localStorage.getItem(KEY); if (raw) { const o = JSON.parse(raw); return migrate({ ...blank(), ...o, v: o.v || 1 }); } }
     catch (e) { storageOk = false; }
     return sample();
   }
-  let state = load();
-  function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); storageOk = true; } catch (e) { storageOk = false; }
+  function loadDevice(st) {
+    let d = {};
+    try { d = JSON.parse(localStorage.getItem(DKEY)) || {}; } catch (e) {}
+    if (!d.id) d.id = uid();
+    if (!d.series) d.series = "JO";
+    if (!d.next) d.next = (st.seq || 0) + 1;
+    if (!d.theme) d.theme = "auto";
+    if (!d.sync) d.sync = { url: "", pin: "", since: 0, lastAt: "", lastMsg: "", error: "" };
+    if (!Array.isArray(d.dirty)) d.dirty = [];
+    return d;
+  }
+  let state = loadState();
+  let device = loadDevice(state);
+  delete state.seq;
+  const dirty = new Set(device.dirty);
+
+  function persist() {
+    device.dirty = [...dirty];
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+      localStorage.setItem(DKEY, JSON.stringify(device));
+      storageOk = true;
+    } catch (e) { storageOk = false; }
     banner();
   }
-  save();
-  const byId = (arr, id) => arr.find((x) => x.id === id);
+  function save() { persist(); scheduleSync(); }
+  /** Stamp a record as changed so it is sent on the next sync. */
+  function touch(type, rec) {
+    rec.updatedAt = nowIso();
+    const k = `${type}:${type === "settings" ? "shared" : rec.id}`;
+    dirty.add(k);
+    if (syncing) retouched.add(k);
+  }
+  persist();
+  const live = (arr) => arr.filter((x) => !x.deleted);
+  const byId = (arr, id) => arr.find((x) => x.id === id && !x.deleted);
+
+  /** Next order number for this device's series, never reusing one already saved. */
+  function nextNumber() {
+    const pre = device.series + "-";
+    let max = 0;
+    state.orders.forEach((o) => { if (o.no && o.no.startsWith(pre)) { const n = parseInt(o.no.slice(pre.length), 10); if (n > max) max = n; } });
+    const n = Math.max(device.next || 1, max + 1);
+    device.next = n + 1;
+    return `${pre}${String(n).padStart(4, "0")}`;
+  }
+  function previewNumber() {
+    const pre = device.series + "-";
+    let max = 0;
+    state.orders.forEach((o) => { if (o.no && o.no.startsWith(pre)) { const n = parseInt(o.no.slice(pre.length), 10); if (n > max) max = n; } });
+    return `${pre}${String(Math.max(device.next || 1, max + 1)).padStart(4, "0")}`;
+  }
+
+  /* ---------- theme ---------- */
+  function applyTheme() {
+    const r = document.documentElement;
+    if (device.theme === "light" || device.theme === "dark") r.setAttribute("data-theme", device.theme);
+    else r.removeAttribute("data-theme");
+  }
+  applyTheme();
 
   /* ---------- toast, dialog, confirm ---------- */
   let tt;
-  function toast(m) { const t = $("#toast"); t.textContent = m; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => (t.hidden = true), 2600); }
+  function toast(m) { const t = $("#toast"); t.textContent = m; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => (t.hidden = true), 2800); }
   const dlg = $("#dlg");
-  let onDlgClose = null;
+  let dlgCtx = null; // what the open dialog shows, so sync can refresh it
   function openDlg(title, body, foot, after) {
     $("#dlg-title").textContent = title;
     const b = $("#dlg-body"); b.oninput = b.onclick = b.onchange = null; b.innerHTML = body;
@@ -312,21 +436,29 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     if (!dlg.open) dlg.showModal();
     if (after) after(b);
   }
-  function closeDlg() { if (dlg.open) dlg.close(); }
-  dlg.addEventListener("close", () => { if (onDlgClose) { const f = onDlgClose; onDlgClose = null; f(); } });
+  function closeDlg() { if (dlg.open) dlg.close(); dlgCtx = null; }
+  dlg.addEventListener("close", () => { dlgCtx = null; });
   dlg.addEventListener("click", (e) => { if (e.target.closest("[data-close]") || e.target === dlg) closeDlg(); });
   let confirmYes = null;
   function confirmBox(title, text, label, yes) {
     confirmYes = yes;
+    dlgCtx = null;
     openDlg(title, `<p style="margin:0">${text}</p>`, `<button class="btn" data-close>Cancel</button><button class="btn primary" data-act="confirm-yes">${esc(label)}</button>`);
   }
 
   function banner() {
     const b = $("#banner");
-    if (!storageOk) { b.hidden = false; b.innerHTML = "This browser is blocking storage, so new records will be lost when the page closes. Copy a backup from Settings."; }
+    if (!storageOk) { b.hidden = false; b.innerHTML = "This device is out of storage space or blocking storage, so new records may not be saved. Share a backup file from Settings now."; }
     else if (state.demo) { b.hidden = false; b.innerHTML = `<span>You are looking at <b>sample data</b>. Add your company name in Settings, then clear the samples.</span><button class="btn sm" data-tab="settings">Settings</button>`; }
     else b.hidden = true;
     $("#brand-name").textContent = state.settings.companyName || "Job Orders";
+    const si = $("#sync-ind"), sy = device.sync;
+    si.hidden = !sy.url;
+    if (sy.url) {
+      si.className = "sync-ind" + (syncing ? " busy" : sy.error ? " err" : "");
+      si.textContent = syncing ? "Syncing…" : sy.error ? "Not synced" : sy.lastAt ? `Synced ${fmtTime(sy.lastAt).slice(-5)}` : "Sync";
+      si.title = sy.error || "Tap to sync now";
+    }
   }
 
   /* ---------- tabs ---------- */
@@ -334,6 +466,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   try { tab = localStorage.getItem(KEY + ".tab") || "new"; } catch (e) {}
   const filters = { status: "Open", q: "", cq: "", iq: "" };
   function go(t) {
+    if (t !== tab) stEdit = null;
     tab = t;
     try { localStorage.setItem(KEY + ".tab", t); } catch (e) {}
     $$(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
@@ -345,16 +478,18 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   /* ---------- order editor ---------- */
   let draft = null;
   function newDraft(preset = {}) {
-    return { id: null, customerId: "", lines: [], vat: !!state.settings.vatDefault, vatRate: state.settings.vatRate || 15, advance: "", notes: "", date: today(), dueDate: addDays(today(), Number(state.settings.dueDays) || 0), ...preset };
+    const dd = state.settings.dueDays;
+    return { id: null, customerId: "", lines: [], vat: !!state.settings.vatDefault, vatRate: state.settings.vatRate || 15, paidNow: "", payMethod: "Cash", notes: "", date: today(), dueDate: dd === "" || dd === null || dd === undefined ? "" : addDays(today(), Number(dd) || 0), ...preset };
   }
   try { draft = JSON.parse(localStorage.getItem(KEY + ".draft")) || null; } catch (e) {}
   if (!draft) draft = newDraft();
+  if (draft.advance !== undefined) { draft.paidNow = draft.advance; delete draft.advance; }
   function keepDraft() { try { localStorage.setItem(KEY + ".draft", JSON.stringify(draft)); } catch (e) {} }
 
   function lineCard(l, i) {
     return `<div class="line" data-i="${i}">
       <div class="line-head"><span class="n">${i + 1}.</span><input data-k="name" value="${esc(l.name)}" placeholder="Item name" aria-label="Item ${i + 1} name"><button type="button" class="icon-btn" data-act="rm-line" data-i="${i}" aria-label="Remove item ${i + 1}">×</button></div>
-      <input data-k="spec" value="${esc(l.spec)}" placeholder="Details: size, paper, colours, finishing" aria-label="Item ${i + 1} details">
+      <input data-k="spec" class="spec" value="${esc(l.spec)}" placeholder="Details: size, paper, colours, finishing" aria-label="Item ${i + 1} details">
       <div class="grid3">
         <label class="f"><span>Qty</span><input data-k="qty" type="number" inputmode="decimal" min="0" step="any" value="${esc(l.qty)}"></label>
         <label class="f"><span>Unit</span><select data-k="unit">${UNITS.concat(UNITS.includes(l.unit) || !l.unit ? [] : [l.unit]).map((u) => `<option ${u === l.unit ? "selected" : ""}>${u}</option>`).join("")}</select></label>
@@ -364,24 +499,26 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       <input data-k="note" value="${esc(l.note)}" placeholder="Note for this item (optional)" aria-label="Item ${i + 1} note">
     </div>`;
   }
-  function totalsHtml(o) {
+  function totalsHtml(o, extraPaid = 0) {
     const t = totals(o);
+    const paid = t.paid + extraPaid, bal = t.total - paid;
     return `<span>Subtotal</span><span class="num">${fmt(t.sub)}</span>
       ${o.vat ? `<span>VAT ${t.rate}%</span><span class="num">${fmt(t.vat)}</span>` : ""}
       <span class="grand">Total</span><span class="num grand">${sar(t.total)}</span>
-      ${t.adv ? `<span>Advance paid</span><span class="num">−${fmt(t.adv)}</span><span class="grand bal">Balance</span><span class="num grand bal">${sar(t.bal)}</span>` : ""}`;
+      ${paid ? `<span>Paid</span><span class="num">−${fmt(paid)}</span><span class="grand bal">${bal <= 0 ? "Fully paid" : "Balance due"}</span><span class="num grand bal">${sar(Math.max(bal, 0))}</span>` : ""}`;
   }
 
   const views = {};
   views.new = () => {
     const d = draft;
     const editing = d.id && byId(state.orders, d.id);
-    const custOpts = state.customers.slice().sort((a, b) => a.name.localeCompare(b.name))
+    const custOpts = live(state.customers).sort((a, b) => a.name.localeCompare(b.name))
       .map((c) => `<option value="${c.id}" ${c.id === d.customerId ? "selected" : ""}>${esc(c.name)}${c.company ? " — " + esc(c.company) : ""}</option>`).join("");
-    const itemOpts = state.items.slice().sort((a, b) => a.name.localeCompare(b.name))
+    const itemOpts = live(state.items).sort((a, b) => a.name.localeCompare(b.name))
       .map((it) => `<option value="${it.id}">${esc(it.name)} · ${fmt(hal(it.price))}/${esc(it.unit)}</option>`).join("");
+    const extra = editing ? 0 : hal(d.paidNow);
     return `
-      <div class="top" style="margin-top:-4px"><div><h1>${editing ? `Edit ${esc(editing.no)}` : "New job order"}</h1><p>${editing ? "Change the order and save it again." : "Pick the customer, add items, then send it on WhatsApp."}</p></div>
+      <div class="top" style="margin-top:-4px"><div><h1>${editing ? `Edit ${esc(editing.no)}` : "New job order"}</h1><p>${editing ? "Change the order and save it again." : `Next number on this device: <span class="mono">${esc(previewNumber())}</span>`}</p></div>
         ${d.lines.length || d.customerId ? `<button class="btn ghost sm" data-act="clear-draft">${editing ? "Cancel" : "Clear"}</button>` : ""}</div>
       <section class="card section">
         <div class="sec-head"><h2>Customer</h2><button class="btn ghost sm" data-act="new-customer" data-for="draft">+ New customer</button></div>
@@ -397,12 +534,14 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
         <h2>Order details</h2>
         <div class="grid2">
           <label class="f"><span>Order date</span><input id="d-date" type="date" value="${esc(d.date)}"></label>
-          <label class="f"><span>Delivery date</span><input id="d-due" type="date" value="${esc(d.dueDate)}"></label>
-          <label class="f"><span>Advance paid, SAR</span><input id="d-adv" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(d.advance)}" placeholder="0.00"></label>
-          <label class="check"><input id="d-vat" type="checkbox" ${d.vat ? "checked" : ""}> Add VAT ${esc(d.vatRate)}%</label>
+          <label class="f"><span>Delivery date (optional)</span><input id="d-due" type="date" value="${esc(d.dueDate)}"></label>
+          ${editing ? `<p class="small muted full" style="margin:0">Payments for this order are recorded from the order screen (Orders → tap the order).</p>` : `
+          <label class="f"><span>Paid now, SAR (optional)</span><input id="d-paid" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(d.paidNow)}" placeholder="0.00"></label>
+          <label class="f"><span>Paid by</span><select id="d-method">${METHODS.map((m) => `<option ${m === d.payMethod ? "selected" : ""}>${m}</option>`).join("")}</select></label>`}
+          <label class="check full"><input id="d-vat" type="checkbox" ${d.vat ? "checked" : ""}> Add VAT ${esc(d.vatRate)}%</label>
           <label class="f full"><span>Notes</span><textarea id="d-notes" placeholder="Artwork, delivery address, special instructions">${esc(d.notes)}</textarea></label>
         </div>
-        <div class="totals" id="d-totals">${totalsHtml(d)}</div>
+        <div class="totals" id="d-totals">${totalsHtml(d, extra)}</div>
       </section>
       <div class="btn-row" style="margin-top:14px">
         <button class="btn" data-act="save-order">${editing ? "Save changes" : "Save order"}</button>
@@ -416,10 +555,11 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   }
   function readDraft() {
     const v = $("#view");
+    if (!$("#d-customer", v)) return;
     draft.customerId = $("#d-customer", v).value;
     draft.date = $("#d-date", v).value;
     draft.dueDate = $("#d-due", v).value;
-    draft.advance = $("#d-adv", v).value;
+    if ($("#d-paid", v)) { draft.paidNow = $("#d-paid", v).value; draft.payMethod = $("#d-method", v).value; }
     draft.vat = $("#d-vat", v).checked;
     draft.notes = $("#d-notes", v).value;
     $$(".line", v).forEach((el) => {
@@ -431,11 +571,12 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     const v = $("#view");
     custInfo();
     v.oninput = v.onchange = (e) => {
-      if (!e.target.closest("#d-customer, #d-date, #d-due, #d-adv, #d-vat, #d-notes, .line")) return;
+      if (tab !== "new" || !e.target.closest("#d-customer, #d-date, #d-due, #d-paid, #d-method, #d-vat, #d-notes, .line")) return;
       e.target.classList.remove("invalid");
       readDraft();
       $$("[data-amt]", v).forEach((el) => { const l = draft.lines[Number(el.dataset.amt)]; el.textContent = sar(lineHal(l.qty, l.price)); });
-      $("#d-totals", v).innerHTML = totalsHtml(draft);
+      const editing = draft.id && byId(state.orders, draft.id);
+      $("#d-totals", v).innerHTML = totalsHtml(editing ? { ...draft, payments: editing.payments } : draft, editing ? 0 : hal(draft.paidNow));
       custInfo();
       keepDraft();
     };
@@ -451,9 +592,15 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       if (!(Number(l.qty) > 0)) { $('[data-k="qty"]', el).classList.add("invalid"); $('[data-k="qty"]', el).focus(); return `Item ${i + 1} needs a quantity above zero.`; }
       if (Number(l.price) < 0) { $('[data-k="price"]', el).classList.add("invalid"); return `Item ${i + 1} has a negative price.`; }
     }
-    const t = totals(draft);
-    if (t.adv < 0) return "Advance cannot be negative.";
-    if (t.adv > t.total) { $("#d-adv", v).classList.add("invalid"); return `Advance is more than the order total of ${sar(t.total)}.`; }
+    if (draft.dueDate && draft.date && draft.dueDate < draft.date) { $("#d-due", v).classList.add("invalid"); return "Delivery date is before the order date."; }
+    const editing = draft.id && byId(state.orders, draft.id);
+    const t = totals(editing ? { ...draft, payments: editing.payments } : draft);
+    if (editing && t.paid > t.total) return `Payments received (${sar(t.paid)}) are more than the new total of ${sar(t.total)}. Remove a payment first.`;
+    if (!editing) {
+      const p = hal(draft.paidNow);
+      if (p < 0) return "Paid amount cannot be negative.";
+      if (p > t.total) { $("#d-paid", v).classList.add("invalid"); return `Paid amount is more than the order total of ${sar(t.total)}.`; }
+    }
     return "";
   }
   function saveDraft() {
@@ -462,17 +609,18 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     const c = byId(state.customers, draft.customerId);
     const clean = {
       customerId: c.id, customer: { name: c.name, phone: c.phone, company: c.company },
-      date: draft.date || today(), dueDate: draft.dueDate, vat: draft.vat, vatRate: draft.vatRate, notes: draft.notes.trim(),
-      advance: hal(draft.advance) / 100,
+      date: draft.date || today(), dueDate: draft.dueDate || "", vat: draft.vat, vatRate: draft.vatRate, notes: draft.notes.trim(),
       lines: draft.lines.map((l) => ({ name: String(l.name).trim(), spec: String(l.spec || "").trim(), unit: l.unit || "pcs", qty: Number(l.qty), price: hal(l.price) / 100, note: String(l.note || "").trim() })),
     };
     let o = draft.id && byId(state.orders, draft.id);
-    if (o) Object.assign(o, clean, { updatedAt: today() });
+    if (o) Object.assign(o, clean);
     else {
-      state.seq += 1;
-      o = { id: uid(), no: `JO-${String(state.seq).padStart(4, "0")}`, status: "New", createdAt: today(), ...clean };
+      o = { id: uid(), no: nextNumber(), status: state.settings.statuses[0] || "New", createdAt: today(), payments: [], device: device.id, ...clean };
+      const p = hal(draft.paidNow);
+      if (p > 0) o.payments.push({ id: uid(), date: o.date, amount: p / 100, method: draft.payMethod || "Cash", note: "" });
       state.orders.push(o);
     }
+    touch("orders", o);
     save();
     draft = newDraft();
     keepDraft();
@@ -480,20 +628,22 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   }
 
   /* ---------- WhatsApp message ---------- */
+  const italic = (t) => (t.includes("_") ? t : `_${t}_`);
   function message(o) {
     const s = state.settings, t = totals(o);
     const out = [`*Job Order ${o.no}*`, `Date: ${fmtDate(o.date)}${o.dueDate ? ` · Delivery: ${fmtDate(o.dueDate)}` : ""}`, `Customer: ${o.customer.name}${o.customer.company ? ` (${o.customer.company})` : ""}`];
-    if (o.status && o.status !== "New") out.push(`Status: *${o.status}*`);
+    if (o.status && o.status !== s.statuses[0]) out.push(`Status: *${o.status}*`);
     out.push("");
     o.lines.forEach((l, i) => {
-      out.push(`${i + 1}. *${l.name}*${l.spec ? ` — ${l.spec}` : ""}`);
+      out.push(`${i + 1}. *${l.name}*`);
+      if (l.spec) out.push(`   ${italic(l.spec)}`);
       out.push(`   ${qtyFmt(l.qty)} ${l.unit} × ${fmt(hal(l.price))} = ${sar(lineHal(l.qty, l.price))}`);
       if (l.note) out.push(`   Note: ${l.note}`);
     });
     out.push("", `Subtotal: ${sar(t.sub)}`);
     if (o.vat) out.push(`VAT ${t.rate}%: ${sar(t.vat)}`);
     out.push(`*Total: ${sar(t.total)}*`);
-    if (t.adv) out.push(`Advance paid: ${sar(t.adv)}`, `*Balance: ${sar(t.bal)}*`);
+    if (t.paid) out.push(`Paid: ${sar(t.paid)}`, t.bal <= 0 ? "*Fully paid* ✓" : `*Balance due: ${sar(t.bal)}*`);
     if (o.notes) out.push("", `Notes: ${o.notes}`);
     if (s.footer) out.push("", s.footer);
     if (s.companyName) out.push(`— ${s.companyName}${s.phone ? " · " + s.phone : ""}`);
@@ -503,10 +653,10 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     const num = waPhone(o.customer.phone);
     const link = (txt) => `https://wa.me/${num}?text=${encodeURIComponent(txt)}`;
     const text = message(o);
-    onDlgClose = null;
+    dlgCtx = null;
     openDlg(`Send ${o.no}`, `
       <label class="f"><span>Message. You can edit it before sending.</span><textarea id="msg" class="msg" rows="16">${esc(text)}</textarea></label>
-      <p class="small muted" style="margin:0">${num ? `Open WhatsApp starts a chat with <span class="mono">+${num}</span>.` : "This customer has no phone number saved, so WhatsApp will ask you to choose a contact."}</p>`,
+      <p class="small muted" style="margin:0">${num ? `Open WhatsApp starts a chat with <span class="mono">+${num}</span>.` : "This customer has no phone number saved, so WhatsApp will ask you to choose a contact."} Words between _underscores_ show in italics in WhatsApp.</p>`,
       `${back ? `<button class="btn" data-act="share-back" data-id="${o.id}">Back</button>` : ""}<button class="btn" data-act="copy-msg">Copy text</button>${NATIVE && Plug.Share ? `<button class="btn" data-act="share-other">Other apps</button>` : ""}<a class="btn wa" id="wa-link" href="${esc(link(text))}" target="_blank" rel="noopener">${WA_ICON} Open WhatsApp</a>`,
       (b) => { b.oninput = () => { $("#wa-link").href = link($("#msg").value); }; });
   }
@@ -517,53 +667,92 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   }
 
   /* ---------- orders ---------- */
+  function statusChips(list) {
+    const all = live(state.orders);
+    const cnt = (f) => all.filter(f).length;
+    const chips = [
+      ["Open", "Open", cnt((o) => !isClosed(o))],
+      ["Due", "Due pending", cnt((o) => totals(o).bal > 0 && o.status !== "Cancelled")],
+      ["Paid", "Paid", cnt((o) => payState(o).label === "Paid")],
+      ...state.settings.statuses.map((s) => [s, s, cnt((o) => o.status === s)]).filter(([, , n]) => n),
+      ["All", "All", all.length],
+    ];
+    void list;
+    return chips.map(([k, l, n]) => `<button class="chip ${filters.status === k ? "on" : ""}" data-status-filter="${esc(k)}">${esc(l)} ${n}</button>`).join("");
+  }
   views.orders = () => {
     const q = filters.q.toLowerCase();
-    let list = state.orders.slice().sort((a, b) => b.no.localeCompare(a.no));
-    if (filters.status === "Open") list = list.filter((o) => o.status !== "Delivered");
-    else if (filters.status !== "All") list = list.filter((o) => o.status === filters.status);
+    const f = filters.status;
+    let list = live(state.orders).sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.no.localeCompare(a.no));
+    if (f === "Open") list = list.filter((o) => !isClosed(o));
+    else if (f === "Due") list = list.filter((o) => totals(o).bal > 0 && o.status !== "Cancelled");
+    else if (f === "Paid") list = list.filter((o) => payState(o).label === "Paid");
+    else if (f !== "All") list = list.filter((o) => o.status === f);
     if (q) list = list.filter((o) => [o.no, o.customer.name, o.customer.company, o.customer.phone, ...o.lines.map((l) => l.name)].join(" ").toLowerCase().includes(q));
-    const count = (s) => s === "All" ? state.orders.length : s === "Open" ? state.orders.filter((o) => o.status !== "Delivered").length : state.orders.filter((o) => o.status === s).length;
-    return `<div class="top"><div><h1>Orders</h1><p>${state.orders.length} saved. Tap an order to send, edit or update its status.</p></div></div>
+    const dueAll = live(state.orders).filter((o) => o.status !== "Cancelled").reduce((s, o) => s + Math.max(totals(o).bal, 0), 0);
+    const shown = list.length > 300 ? list.slice(0, 300) : list;
+    return `<div class="top"><div><h1>Orders</h1><p>${live(state.orders).length} saved. Tap an order to send it, take payment or change its status.</p></div></div>
+      <div class="due-sum"><span>Total due pending</span><b class="${dueAll ? "has" : ""}">${sar(dueAll)}</b></div>
       <input type="search" id="o-search" class="search" placeholder="Search order no., customer, item" value="${esc(filters.q)}">
-      <div class="chips">${["Open", ...STATUSES, "All"].map((s) => `<button class="chip ${filters.status === s ? "on" : ""}" data-status-filter="${s}">${s} ${count(s)}</button>`).join("")}</div>
-      <div class="list">${list.map(orderRow).join("") || `<div class="empty">No orders here yet.</div>`}</div>`;
+      <div class="chips">${statusChips()}</div>
+      <div class="list">${shown.map(orderRow).join("") || `<div class="empty">No orders here.</div>`}</div>
+      ${list.length > shown.length ? `<p class="small muted" style="text-align:center">Showing the latest 300 of ${list.length}. Search to find older orders.</p>` : ""}`;
   };
   function orderRow(o) {
-    const t = totals(o);
+    const t = totals(o), ps = payState(o);
     return `<button class="row" data-act="open-order" data-id="${o.id}">
-      <span><span class="t"><span class="mono">${esc(o.no)}</span> · ${esc(o.customer.name)}</span><br><span class="s">${esc(o.lines.map((l) => l.name).join(", "))}</span><br><span class="s">Delivery ${fmtDate(o.dueDate)}</span></span>
-      <span class="r"><span class="pill ${o.status.replace(" ", "-")}">${esc(o.status)}</span><span class="mono">${fmt(t.total)}</span>${t.adv ? `<span class="s">Bal ${fmt(t.bal)}</span>` : ""}</span></button>`;
+      <span><span class="t"><span class="mono">${esc(o.no)}</span> · ${esc(o.customer.name)}</span><br><span class="s">${esc(o.lines.map((l) => l.name).join(", "))}</span><br><span class="s">${fmtDate(o.date)}${o.dueDate ? ` · Delivery ${fmtDate(o.dueDate)}` : " · No delivery date"}</span></span>
+      <span class="r"><span class="pills"><span class="pill ${tone(o.status)}">${esc(o.status)}</span></span><span class="mono">${fmt(t.total)}</span><span class="pill ${ps.tone}">${ps.label}${ps.label === "Partly paid" ? ` · ${fmt(t.bal)}` : ""}</span></span></button>`;
   }
   function openOrder(o) {
-    const t = totals(o);
-    onDlgClose = null;
+    if (!o) return closeDlg();
+    const t = totals(o), ps = payState(o);
+    const statuses = state.settings.statuses.includes(o.status) ? state.settings.statuses : state.settings.statuses.concat(o.status);
     openDlg(o.no, `
       <div class="ticket">
-        <div class="ticket-top"><span><b>${esc(o.no)}</b><br><span class="small muted">${fmtDate(o.date)} · Delivery ${fmtDate(o.dueDate)}</span></span><span style="text-align:right"><b style="font-family:var(--f-body)">${esc(o.customer.name)}</b><br><span class="small muted">${esc([o.customer.company, o.customer.phone].filter(Boolean).join(" · "))}</span></span></div>
-        <table><tbody>${o.lines.map((l, i) => `<tr><td>${i + 1}. <b>${esc(l.name)}</b>${l.spec ? `<small>${esc(l.spec)}</small>` : ""}${l.note ? `<small>Note: ${esc(l.note)}</small>` : ""}<small class="mono">${qtyFmt(l.qty)} ${esc(l.unit)} × ${fmt(hal(l.price))}</small></td><td class="num">${fmt(lineHal(l.qty, l.price))}</td></tr>`).join("")}</tbody></table>
+        <div class="ticket-top"><span><b>${esc(o.no)}</b><br><span class="small muted">${fmtDate(o.date)}${o.dueDate ? ` · Delivery ${fmtDate(o.dueDate)}` : ""}</span></span><span style="text-align:right"><b style="font-family:var(--f-body)">${esc(o.customer.name)}</b><br><span class="small muted">${esc([o.customer.company, o.customer.phone].filter(Boolean).join(" · "))}</span></span></div>
+        <table><tbody>${o.lines.map((l, i) => `<tr><td>${i + 1}. <b>${esc(l.name)}</b>${l.spec ? `<small class="spec">${esc(l.spec)}</small>` : ""}${l.note ? `<small>Note: ${esc(l.note)}</small>` : ""}<small class="mono">${qtyFmt(l.qty)} ${esc(l.unit)} × ${fmt(hal(l.price))}</small></td><td class="num">${fmt(lineHal(l.qty, l.price))}</td></tr>`).join("")}</tbody></table>
         <div class="totals">${totalsHtml(o)}</div>
       </div>
       ${o.notes ? `<p style="margin:0"><b>Notes:</b> ${esc(o.notes)}</p>` : ""}
-      <label class="f"><span>Status</span><select id="o-status" data-id="${o.id}">${STATUSES.map((s) => `<option ${s === o.status ? "selected" : ""}>${s}</option>`).join("")}</select></label>`,
+      <label class="f"><span>Status</span><select id="o-status" data-id="${o.id}">${statuses.map((s) => `<option ${s === o.status ? "selected" : ""}>${esc(s)}</option>`).join("")}</select></label>
+      <div class="sec-head"><h3>Payments <span class="pill ${ps.tone}">${ps.label}</span></h3>${t.bal > 0 ? `<button class="btn ghost sm" data-act="add-payment" data-id="${o.id}">+ Add payment</button>` : ""}</div>
+      <div class="pay-list">${(o.payments || []).slice().sort((a, b) => a.date.localeCompare(b.date)).map((p) => `<div class="pay-row"><span>${fmtDate(p.date)} · ${esc(p.method)}${p.note ? ` <span class="muted">· ${esc(p.note)}</span>` : ""}</span><span class="num">${fmt(hal(p.amount))}</span><button class="icon-btn" data-act="del-payment" data-id="${o.id}" data-pid="${p.id}" aria-label="Delete payment">×</button></div>`).join("") || `<p class="small muted" style="margin:0">No payment received yet.</p>`}</div>
+      ${t.bal > 0 ? `<button class="btn primary" data-act="mark-paid" data-id="${o.id}">Mark fully paid · ${sar(t.bal)}</button>` : ""}`,
       `<button class="btn danger" data-act="del-order" data-id="${o.id}">Delete</button><button class="btn" data-act="dup-order" data-id="${o.id}">Duplicate</button><button class="btn" data-act="edit-order" data-id="${o.id}">Edit</button><button class="btn wa" data-act="share-order" data-id="${o.id}">${WA_ICON} Send</button>`,
-      (b) => { b.onchange = (e) => { if (e.target.id === "o-status") { o.status = e.target.value; o.updatedAt = today(); save(); if (tab === "orders") render(); toast(`${o.no} marked ${o.status}`); } }; });
-    void t;
+      (b) => { b.onchange = (e) => { if (e.target.id === "o-status") { o.status = e.target.value; touch("orders", o); save(); if (tab === "orders") render(); toast(`${o.no} marked ${o.status}`); } }; });
+    dlgCtx = { kind: "order", id: o.id };
+  }
+  function paymentDlg(o, full) {
+    const bal = totals(o).bal;
+    dlgCtx = null;
+    openDlg(full ? `Mark ${o.no} fully paid` : `Add payment · ${o.no}`, `
+      <p style="margin:0">Balance due: <b class="mono">${sar(bal)}</b></p>
+      <div class="grid2">
+        <label class="f"><span>Amount, SAR</span><input id="p-amount" type="number" inputmode="decimal" min="0.01" step="0.01" value="${(bal / 100).toFixed(2)}" ${full ? "readonly" : ""}></label>
+        <label class="f"><span>Date received</span><input id="p-date" type="date" value="${today()}"></label>
+      </div>
+      <div class="f"><span class="small" style="font-weight:600;color:var(--ink-2)">Received by</span><div class="seg" id="p-method" style="grid-template-columns:repeat(2,minmax(0,1fr))">${METHODS.map((m, i) => `<button type="button" data-m="${m}" class="${i === 0 ? "on" : ""}">${m}</button>`).join("")}</div></div>
+      <label class="f"><span>Note (optional)</span><input id="p-note" placeholder="Reference, cheque no."></label>`,
+      `<button class="btn" data-act="pay-back" data-id="${o.id}">Back</button><button class="btn primary" data-act="save-payment" data-id="${o.id}">${full ? "Mark fully paid" : "Save payment"}</button>`,
+      (b) => { b.onclick = (e) => { const m = e.target.closest("#p-method button"); if (m) $$("#p-method button", b).forEach((x) => x.classList.toggle("on", x === m)); }; });
   }
 
   /* ---------- customers ---------- */
   views.customers = () => {
     const q = filters.cq.toLowerCase();
-    const list = state.customers.slice().sort((a, b) => a.name.localeCompare(b.name)).filter((c) => !q || [c.name, c.phone, c.company].join(" ").toLowerCase().includes(q));
+    const list = live(state.customers).sort((a, b) => a.name.localeCompare(b.name)).filter((c) => !q || [c.name, c.phone, c.company].join(" ").toLowerCase().includes(q));
     return `<div class="top"><div><h1>Customers</h1><p>Saved once, picked on every order.</p></div><button class="btn primary sm" data-act="new-customer">+ Add</button></div>
       <input type="search" id="c-search" class="search" placeholder="Search name, phone, company" value="${esc(filters.cq)}">
       <div class="list">${list.map((c) => {
-        const n = state.orders.filter((o) => o.customerId === c.id).length;
-        return `<button class="row" data-act="open-customer" data-id="${c.id}"><span><span class="t">${esc(c.name)}</span><br><span class="s">${esc([c.company, c.phone].filter(Boolean).join(" · ") || "No details")}</span></span><span class="r"><span class="s">${n} order${n === 1 ? "" : "s"}</span></span></button>`;
+        const os = live(state.orders).filter((o) => o.customerId === c.id);
+        const due = os.filter((o) => o.status !== "Cancelled").reduce((s, o) => s + Math.max(totals(o).bal, 0), 0);
+        return `<button class="row" data-act="open-customer" data-id="${c.id}"><span><span class="t">${esc(c.name)}</span><br><span class="s">${esc([c.company, c.phone].filter(Boolean).join(" · ") || "No details")}</span></span><span class="r"><span class="s">${os.length} order${os.length === 1 ? "" : "s"}</span>${due ? `<span class="pill bad">Due ${fmt(due)}</span>` : ""}</span></button>`;
       }).join("") || `<div class="empty">No customers yet. Tap + Add to save your first customer.</div>`}</div>`;
   };
   function customerForm(c, forDraft) {
     const x = c || {};
+    dlgCtx = null;
     openDlg(c ? "Edit customer" : "New customer", `
       <label class="f"><span>Name</span><input id="c-name" value="${esc(x.name)}" autocomplete="off"></label>
       <label class="f"><span>WhatsApp / mobile</span><input id="c-phone" type="tel" inputmode="tel" value="${esc(x.phone)}" placeholder="05XXXXXXXX"></label>
@@ -572,31 +761,34 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       `<button class="btn" data-close>Cancel</button><button class="btn primary" data-act="save-customer" data-id="${x.id || ""}" data-for="${forDraft ? "draft" : ""}">Save customer</button>`);
   }
   function openCustomer(c) {
-    const orders = state.orders.filter((o) => o.customerId === c.id).sort((a, b) => b.no.localeCompare(a.no));
-    const billed = orders.reduce((s, o) => s + totals(o).total, 0);
-    const bal = orders.filter((o) => o.status !== "Delivered" || totals(o).bal).reduce((s, o) => s + totals(o).bal, 0);
-    onDlgClose = null;
+    if (!c) return closeDlg();
+    const orders = live(state.orders).filter((o) => o.customerId === c.id).sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.no.localeCompare(a.no));
+    const billed = orders.filter((o) => o.status !== "Cancelled").reduce((s, o) => s + totals(o).total, 0);
+    const paid = orders.reduce((s, o) => s + totals(o).paid, 0);
+    const due = orders.filter((o) => o.status !== "Cancelled").reduce((s, o) => s + Math.max(totals(o).bal, 0), 0);
     openDlg(c.name, `
       <dl class="kv"><dt>Phone</dt><dd class="mono">${esc(c.phone || "—")}</dd><dt>Company</dt><dd>${esc(c.company || "—")}</dd>${c.notes ? `<dt>Notes</dt><dd>${esc(c.notes)}</dd>` : ""}
-        <dt>Orders</dt><dd>${orders.length} · total ${sar(billed)}</dd><dt>Balance on orders</dt><dd class="mono">${sar(bal)}</dd></dl>
+        <dt>Orders</dt><dd>${orders.length} · total ${sar(billed)}</dd><dt>Received</dt><dd class="mono">${sar(paid)}</dd><dt>Due pending</dt><dd class="mono" style="color:${due ? "var(--bad)" : "inherit"}">${sar(due)}</dd></dl>
       <h3>Previous orders</h3>
       <div class="list">${orders.map(orderRow).join("") || `<div class="empty">No orders yet.</div>`}</div>`,
       `<button class="btn danger" data-act="del-customer" data-id="${c.id}">Delete</button><button class="btn" data-act="edit-customer" data-id="${c.id}">Edit</button><button class="btn primary" data-act="order-for" data-id="${c.id}">New order</button>`);
+    dlgCtx = { kind: "customer", id: c.id };
   }
 
   /* ---------- items ---------- */
   views.items = () => {
     const q = filters.iq.toLowerCase();
-    const list = state.items.slice().sort((a, b) => a.name.localeCompare(b.name)).filter((i) => !q || [i.name, i.spec].join(" ").toLowerCase().includes(q));
+    const list = live(state.items).sort((a, b) => a.name.localeCompare(b.name)).filter((i) => !q || [i.name, i.spec].join(" ").toLowerCase().includes(q));
     return `<div class="top"><div><h1>Items</h1><p>Your products with default price and details.</p></div><button class="btn primary sm" data-act="new-item">+ Add</button></div>
       <input type="search" id="i-search" class="search" placeholder="Search items" value="${esc(filters.iq)}">
-      <div class="list">${list.map((i) => `<button class="row" data-act="edit-item" data-id="${i.id}"><span><span class="t">${esc(i.name)}</span><br><span class="s">${esc(i.spec || "No details")}</span></span><span class="r"><span class="mono">${fmt(hal(i.price))}</span><span class="s">per ${esc(i.unit)}</span></span></button>`).join("") || `<div class="empty">No items yet. Tap + Add to save a product like "Business cards".</div>`}</div>`;
+      <div class="list">${list.map((i) => `<button class="row" data-act="edit-item" data-id="${i.id}"><span><span class="t">${esc(i.name)}</span><br><span class="s spec">${esc(i.spec || "No details")}</span></span><span class="r"><span class="mono">${fmt(hal(i.price))}</span><span class="s">per ${esc(i.unit)}</span></span></button>`).join("") || `<div class="empty">No items yet. Tap + Add to save a product like "Business cards".</div>`}</div>`;
   };
   function itemForm(it) {
     const x = it || { unit: "pcs" };
+    dlgCtx = null;
     openDlg(it ? "Edit item" : "New item", `
       <label class="f"><span>Item name</span><input id="i-name" value="${esc(x.name)}" placeholder="Business cards"></label>
-      <label class="f"><span>Details</span><textarea id="i-spec" placeholder="Size, paper, colours, finishing">${esc(x.spec)}</textarea></label>
+      <label class="f"><span>Details (shown in italics)</span><textarea id="i-spec" class="spec" placeholder="Size, paper, colours, finishing">${esc(x.spec)}</textarea></label>
       <div class="grid2">
         <label class="f"><span>Unit</span><select id="i-unit">${UNITS.map((u) => `<option ${u === x.unit ? "selected" : ""}>${u}</option>`).join("")}</select></label>
         <label class="f"><span>Default price, SAR</span><input id="i-price" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(x.price ?? "")}"></label>
@@ -605,32 +797,174 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   }
 
   /* ---------- settings ---------- */
+  let stEdit = null; // statuses being edited
+  function storageUse() { let n = 0; try { n = (localStorage.getItem(KEY) || "").length + (localStorage.getItem(DKEY) || "").length; } catch (e) {} return n; }
   views.settings = () => {
-    const s = state.settings;
-    return `<div class="top"><div><h1>Settings</h1><p>Shown at the end of every WhatsApp message.</p></div></div>
+    const s = state.settings, sy = device.sync;
+    const used = storageUse(), pct = Math.min(100, Math.round((used / QUOTA) * 100));
+    if (!stEdit) stEdit = s.statuses.map((x) => ({ old: x, name: x }));
+    const usedBy = (name) => live(state.orders).some((o) => o.status === name);
+    return `<div class="top"><div><h1>Settings</h1><p>Company details are shared with every synced device.</p></div></div>
       <section class="card section">
+        <h2>Company</h2>
         <label class="f"><span>Company name</span><input id="s-company" value="${esc(s.companyName)}"></label>
         <label class="f"><span>Company phone</span><input id="s-phone" type="tel" value="${esc(s.phone)}"></label>
         <label class="f"><span>Message footer</span><input id="s-footer" value="${esc(s.footer)}"></label>
         <div class="grid2">
           <label class="check"><input id="s-vat" type="checkbox" ${s.vatDefault ? "checked" : ""}> Add VAT by default</label>
           <label class="f"><span>VAT rate %</span><input id="s-rate" type="number" min="0" max="100" step="0.01" value="${esc(s.vatRate)}"></label>
-          <label class="f"><span>Delivery after (days)</span><input id="s-due" type="number" min="0" step="1" value="${esc(s.dueDays)}"></label>
+          <label class="f full"><span>Default delivery after (days). Leave empty for no date.</span><input id="s-due" type="number" min="0" step="1" value="${esc(s.dueDays)}" placeholder="No default"></label>
         </div>
-        <button class="btn primary" data-act="save-settings">Save settings</button>
+        <button class="btn primary" data-act="save-settings">Save company settings</button>
       </section>
+
+      <section class="card section">
+        <h2>Order statuses</h2>
+        <p class="small muted" style="margin:0">The first status is given to new orders. Delivered and Cancelled close an order and cannot be renamed.</p>
+        <div class="stack" id="st-list">${stEdit.map((x, i) => `<div class="st-row">
+          <input data-st="${i}" value="${esc(x.name)}" ${LOCKED.includes(x.old) ? "readonly" : ""} aria-label="Status ${i + 1}">
+          <button class="icon-btn" data-act="st-up" data-i="${i}" ${i === 0 ? "disabled" : ""} aria-label="Move up">▲</button>
+          <button class="icon-btn" data-act="st-down" data-i="${i}" ${i === stEdit.length - 1 ? "disabled" : ""} aria-label="Move down">▼</button>
+          <button class="icon-btn" data-act="st-del" data-i="${i}" ${LOCKED.includes(x.old) || (x.old && usedBy(x.old)) ? "disabled" : ""} aria-label="Delete status">×</button></div>`).join("")}</div>
+        <div class="btn-row"><button class="btn" data-act="st-add">+ Add status</button><button class="btn primary" data-act="st-save">Save statuses</button></div>
+      </section>
+
+      <section class="card section">
+        <h2>This device</h2>
+        <div class="f"><span class="small" style="font-weight:600;color:var(--ink-2)">Appearance</span><div class="seg">${[["auto", "Auto"], ["light", "Light"], ["dark", "Dark"]].map(([k, l]) => `<button type="button" data-act="theme" data-theme-set="${k}" class="${device.theme === k ? "on" : ""}">${l}</button>`).join("")}</div></div>
+        <div class="grid2">
+          <label class="f"><span>Order number series</span><input id="d-series" value="${esc(device.series)}" maxlength="10" placeholder="JO-A"></label>
+          <label class="f"><span>Next number</span><input id="d-next" type="number" min="1" step="1" value="${esc(device.next)}"></label>
+        </div>
+        <p class="small muted" style="margin:0">Give every phone or computer its own series, for example JO-A, JO-B, JO-C, so numbers never clash. Next order: <span class="mono">${esc(previewNumber())}</span></p>
+        <button class="btn" data-act="save-device">Save device settings</button>
+      </section>
+
+      <section class="card section">
+        <h2>Sync between devices</h2>
+        <p class="small muted" style="margin:0">Uses one common Gmail and a Google Drive folder. Paste the sync link and team PIN from the person who set it up (see the setup guide).</p>
+        <label class="f"><span>Sync link</span><input id="y-url" value="${esc(sy.url)}" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+        <label class="f"><span>Team PIN</span><input id="y-pin" value="${esc(sy.pin)}" autocomplete="off"></label>
+        ${sy.url ? `<p class="small" style="margin:0">${sy.error ? `<span style="color:var(--bad)">Last attempt failed: ${esc(sy.error)}</span>` : sy.lastAt ? `Last synced ${fmtTime(sy.lastAt)}. ${esc(sy.lastMsg)}` : "Not synced yet."} ${dirty.size ? `${dirty.size} change(s) waiting to send.` : ""}</p>` : ""}
+        <div class="btn-row">${sy.url ? `<button class="btn primary" data-act="sync-now">Sync now</button><button class="btn" data-act="sync-test">Test connection</button><button class="btn danger" data-act="sync-off">Turn off</button>` : `<button class="btn primary" data-act="sync-connect">Connect</button>`}</div>
+      </section>
+
       <section class="card section">
         <h2>Backup</h2>
-        <p class="small muted" style="margin:0">Your data is saved on this phone or computer only. Copy the backup text now and then, and keep it in WhatsApp (message to yourself), email or Google Drive. Paste it here to restore on another device.</p>
-        <div class="btn-row"><button class="btn" data-act="copy-backup">Copy backup</button>${NATIVE && Plug.Share ? `<button class="btn" data-act="share-backup">Share backup</button>` : `<button class="btn" data-act="download-backup">Download file</button>`}</div>
-        <label class="f"><span>Restore: paste backup text</span><textarea id="s-restore" placeholder='{"settings":…}'></textarea></label>
-        <button class="btn" data-act="restore">Restore from pasted text</button>
+        <p class="small muted" style="margin:0">${live(state.orders).length} orders, ${live(state.customers).length} customers, ${live(state.items).length} items. Storage used on this device: ${(used / 1000).toFixed(0)} KB of about 5,000 KB (${pct}%).</p>
+        <div class="meter ${pct >= 70 ? "hot" : ""}"><span style="width:${Math.max(pct, 1)}%"></span></div>
+        ${pct >= 70 ? `<p class="small" style="margin:0;color:var(--bad)">Storage is getting full. Share a backup file, then delete old delivered orders.</p>` : ""}
+        <div class="btn-row">${NATIVE && Plug.Share && Plug.Filesystem ? `<button class="btn primary" data-act="share-backup">Share backup file</button>` : `<button class="btn primary" data-act="download-backup">Save backup file</button>`}<button class="btn" data-act="restore-file">Restore from file</button></div>
+        <details><summary class="small muted">Copy / paste backup text (small data only)</summary>
+          <div class="stack" style="margin-top:10px"><button class="btn" data-act="copy-backup">Copy backup text</button>
+          <label class="f"><span>Restore: paste backup text</span><textarea id="s-restore" placeholder='{"settings":…}'></textarea></label>
+          <button class="btn" data-act="restore">Restore from pasted text</button></div></details>
       </section>
+
       <section class="card section">
         <h2>Data</h2>
-        <div class="btn-row">${state.demo ? `<button class="btn primary" data-act="clear-sample">Clear sample data</button>` : `<button class="btn" data-act="load-sample">Load sample data</button>`}<button class="btn danger" data-act="wipe">Delete everything</button></div>
+        <div class="btn-row">${state.demo ? `<button class="btn primary" data-act="clear-sample">Clear sample data</button>` : `<button class="btn" data-act="load-sample">Load sample data</button>`}<button class="btn danger" data-act="wipe">Delete everything on this device</button></div>
       </section>`;
   };
+  function readStatuses() { $$("[data-st]").forEach((el) => { stEdit[Number(el.dataset.st)].name = el.value; }); }
+
+  /* ---------- backup & restore ---------- */
+  const backupName = () => `job-orders-backup-${fmtDate(today())}.json`;
+  function backupJson() { return JSON.stringify({ app: "job-orders", exportedAt: nowIso(), ...state }); }
+  function restoreFrom(text) {
+    let s;
+    try { s = JSON.parse(text); if (!Array.isArray(s.orders) || !Array.isArray(s.customers) || !Array.isArray(s.items)) throw 0; }
+    catch (err) { return toast("That is not a Job Orders backup."); }
+    const n = live(s.orders).length;
+    confirmBox("Restore backup", `Replace everything on this device with the backup (${n} orders, ${live(s.customers).length} customers, ${live(s.items).length} items)?${device.sync.url ? " The restored records will also be sent to the shared Drive folder." : ""}`, "Restore", () => {
+      delete s.app; delete s.exportedAt;
+      state = migrate({ ...blank(), ...s, v: s.v || 1 });
+      if (s.seq && !device.next) device.next = s.seq + 1;
+      delete state.seq;
+      if (device.sync.url) markAllDirty();
+      stEdit = null; save(); render(); toast("Backup restored");
+    });
+  }
+  function markAllDirty() {
+    TYPES.forEach((t) => state[t].forEach((r) => dirty.add(`${t}:${r.id}`)));
+    dirty.add("settings:shared");
+  }
+
+  /* ---------- sync with the shared Drive folder ---------- */
+  function scheduleSync() {
+    if (!device.sync.url) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => syncNow(false), 3000);
+  }
+  async function callSync(body) {
+    const res = await fetch(device.sync.url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ pin: device.sync.pin, ...body }) });
+    if (!res.ok) throw new Error(`The sync link answered with error ${res.status}.`);
+    let j;
+    try { j = await res.json(); } catch (e) { throw new Error("The sync link did not answer like a Job Orders sync script. Check the link."); }
+    if (!j.ok) throw new Error(j.error || "Sync failed.");
+    return j;
+  }
+  function applyRecord(t, r) {
+    if (t === "settings") {
+      const shared = {};
+      SHARED.forEach((k) => { if (r[k] !== undefined) shared[k] = r[k]; });
+      state.settings = { ...state.settings, ...shared, updatedAt: r.updatedAt };
+      stEdit = null;
+      return;
+    }
+    if (!TYPES.includes(t)) return;
+    const arr = state[t], i = arr.findIndex((x) => x.id === r.id);
+    const clean = { ...r }; delete clean._rev;
+    if (i >= 0) arr[i] = clean; else arr.push(clean);
+  }
+  async function syncNow(manual) {
+    const sy = device.sync;
+    if (!sy.url || syncing) return;
+    if (!navigator.onLine) { sy.error = "No internet connection. Will sync when back online."; banner(); if (manual) toast(sy.error); return; }
+    syncing = true; retouched.clear(); banner();
+    const sent = [...dirty];
+    const changes = sent.map((k) => {
+      const [t, id] = k.split(":");
+      if (t === "settings") { const r = { id: "shared", updatedAt: state.settings.updatedAt }; SHARED.forEach((f) => (r[f] = state.settings[f])); return { t, r }; }
+      const r = (state[t] || []).find((x) => x.id === id);
+      return r ? { t, r } : null;
+    }).filter(Boolean);
+    try {
+      const j = await callSync({ action: "sync", since: sy.since || 0, device: device.id, changes });
+      sent.forEach((k) => { if (!retouched.has(k)) dirty.delete(k); });
+      let got = 0;
+      (j.records || []).forEach(({ t, r }) => {
+        const k = `${t}:${t === "settings" ? "shared" : r.id}`;
+        if (dirty.has(k)) return; // changed again here meanwhile; ours goes up next time
+        applyRecord(t, r); got++;
+      });
+      if (state.demo && got && live(state.orders).length) state.demo = !!state.demo;
+      sy.since = j.rev; sy.lastAt = nowIso(); sy.error = "";
+      sy.lastMsg = `${changes.length} sent, ${got} received.`;
+      persist();
+      if (manual) toast(`Synced. ${sy.lastMsg}`);
+      refreshAfterSync(got);
+    } catch (e) {
+      sy.error = e && e.message && !/Failed to fetch|NetworkError|Load failed/i.test(e.message) ? e.message : "Could not reach the sync link. Check the internet and the link.";
+      persist();
+      if (manual) toast(sy.error);
+    } finally {
+      syncing = false; banner();
+      if (dirty.size && !sy.error) scheduleSync();
+    }
+  }
+  function refreshAfterSync(got) {
+    const f = document.activeElement;
+    const typing = f && $("#view").contains(f) && /INPUT|TEXTAREA|SELECT/.test(f.tagName);
+    if ((got || tab === "settings") && !typing) render(); // never interrupt someone typing
+    if (dlgCtx && dlg.open) {
+      if (dlgCtx.kind === "order") openOrder(byId(state.orders, dlgCtx.id));
+      if (dlgCtx.kind === "customer") openCustomer(byId(state.customers, dlgCtx.id));
+    }
+  }
+  window.addEventListener("online", () => syncNow(false));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) syncNow(false); });
+  setInterval(() => { if (!document.hidden) syncNow(false); }, 60000);
 
   /* ---------- events ---------- */
   document.addEventListener("click", async (e) => {
@@ -641,7 +975,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     const sf = e.target.closest("[data-status-filter]");
     if (sf) { filters.status = sf.dataset.statusFilter; return render(); }
     const b = e.target.closest("[data-act]");
-    if (!b) return;
+    if (!b || b.disabled) return;
     const id = b.dataset.id;
     switch (b.dataset.act) {
       case "confirm-yes": { const f = confirmYes; confirmYes = null; closeDlg(); return f && f(); }
@@ -663,11 +997,33 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       /* orders */
       case "open-order": return openOrder(byId(state.orders, id));
       case "share-order": return shareDlg(byId(state.orders, id), true);
-      case "share-back": return openOrder(byId(state.orders, id));
+      case "share-back": case "pay-back": return openOrder(byId(state.orders, id));
       case "copy-msg": return toast((await copy($("#msg").value)) ? "Copied. Paste it in WhatsApp." : "Select the text and copy it manually.");
+      case "share-other":
+        try { await Plug.Share.share({ text: $("#msg").value, dialogTitle: "Send order with…" }); } catch (err) { /* closed */ }
+        return;
+      case "add-payment": return paymentDlg(byId(state.orders, id), false);
+      case "mark-paid": return paymentDlg(byId(state.orders, id), true);
+      case "save-payment": {
+        const o = byId(state.orders, id);
+        const amt = hal($("#p-amount").value), bal = totals(o).bal;
+        if (amt <= 0) { $("#p-amount").classList.add("invalid"); return toast("Enter an amount above zero."); }
+        if (amt > bal) { $("#p-amount").classList.add("invalid"); return toast(`That is more than the balance of ${sar(bal)}.`); }
+        const method = ($("#p-method .on") || {}).dataset?.m || "Cash";
+        o.payments.push({ id: uid(), date: $("#p-date").value || today(), amount: amt / 100, method, note: $("#p-note").value.trim() });
+        touch("orders", o); save(); if (tab === "orders") render();
+        openOrder(o);
+        return toast(totals(o).bal <= 0 ? `${o.no} fully paid` : `Payment of ${sar(amt)} saved`);
+      }
+      case "del-payment": {
+        const o = byId(state.orders, id), p = o.payments.find((x) => x.id === b.dataset.pid);
+        return confirmBox("Delete payment", `Delete the ${esc(p.method)} payment of <b>${sar(hal(p.amount))}</b> on ${fmtDate(p.date)} from ${esc(o.no)}?`, "Delete payment", () => {
+          o.payments = o.payments.filter((x) => x.id !== p.id); touch("orders", o); save(); if (tab === "orders") render(); openOrder(o); toast("Payment deleted");
+        });
+      }
       case "edit-order": {
         const o = byId(state.orders, id);
-        draft = { id: o.id, customerId: o.customerId, lines: o.lines.map((l) => ({ ...l })), vat: o.vat, vatRate: o.vatRate, advance: o.advance || "", notes: o.notes, date: o.date, dueDate: o.dueDate };
+        draft = { id: o.id, customerId: o.customerId, lines: o.lines.map((l) => ({ ...l })), vat: o.vat, vatRate: o.vatRate, notes: o.notes, date: o.date, dueDate: o.dueDate };
         if (!byId(state.customers, o.customerId)) draft.customerId = "";
         keepDraft(); closeDlg(); return go("new");
       }
@@ -676,7 +1032,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
         draft = newDraft({ customerId: byId(state.customers, o.customerId) ? o.customerId : "", lines: o.lines.map((l) => ({ ...l })), vat: o.vat, vatRate: o.vatRate, notes: o.notes });
         keepDraft(); closeDlg(); go("new"); return toast(`Copied ${o.no} into a new order`);
       }
-      case "del-order": { const o = byId(state.orders, id); return confirmBox("Delete order", `Delete <b>${esc(o.no)}</b> for ${esc(o.customer.name)}? This cannot be undone.`, "Delete order", () => { state.orders = state.orders.filter((x) => x.id !== id); save(); render(); toast(`${o.no} deleted`); }); }
+      case "del-order": { const o = byId(state.orders, id); return confirmBox("Delete order", `Delete <b>${esc(o.no)}</b> for ${esc(o.customer.name)}? This cannot be undone.`, "Delete order", () => { o.deleted = true; touch("orders", o); save(); render(); toast(`${o.no} deleted`); }); }
       /* customers */
       case "new-customer": return customerForm(null, b.dataset.for === "draft");
       case "open-customer": return openCustomer(byId(state.customers, id));
@@ -687,11 +1043,12 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
         const data = { name, phone: $("#c-phone").value.trim(), company: $("#c-company").value.trim(), notes: $("#c-notes").value.trim() };
         let c = id && byId(state.customers, id);
         if (c) Object.assign(c, data); else { c = { id: uid(), ...data }; state.customers.push(c); }
+        touch("customers", c);
         if (b.dataset.for === "draft") { readDraft(); draft.customerId = c.id; keepDraft(); }
         save(); closeDlg(); render(); return toast(id ? "Customer updated" : "Customer saved");
       }
       case "order-for": if (draft.id) draft = newDraft(); draft.customerId = id; keepDraft(); closeDlg(); return go("new");
-      case "del-customer": { const c = byId(state.customers, id); return confirmBox("Delete customer", `Delete <b>${esc(c.name)}</b>? Their saved orders stay in the Orders list.`, "Delete customer", () => { state.customers = state.customers.filter((x) => x.id !== id); if (draft.customerId === id) draft.customerId = ""; save(); render(); toast("Customer deleted"); }); }
+      case "del-customer": { const c = byId(state.customers, id); return confirmBox("Delete customer", `Delete <b>${esc(c.name)}</b>? Their saved orders stay in the Orders list.`, "Delete customer", () => { c.deleted = true; touch("customers", c); if (draft.customerId === id) draft.customerId = ""; save(); render(); toast("Customer deleted"); }); }
       /* items */
       case "new-item": return itemForm(null);
       case "edit-item": return itemForm(byId(state.items, id));
@@ -700,47 +1057,91 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
         if (!name) { $("#i-name").classList.add("invalid"); $("#i-name").focus(); return toast("Enter the item name."); }
         if (price === "" || Number(price) < 0) { $("#i-price").classList.add("invalid"); $("#i-price").focus(); return toast("Enter a price of 0 or more."); }
         const data = { name, spec: $("#i-spec").value.trim(), unit: $("#i-unit").value, price: hal(price) / 100 };
-        const it = id && byId(state.items, id);
-        if (it) Object.assign(it, data); else state.items.push({ id: uid(), ...data });
+        let it = id && byId(state.items, id);
+        if (it) Object.assign(it, data); else { it = { id: uid(), ...data }; state.items.push(it); }
+        touch("items", it);
         save(); closeDlg(); render(); return toast(id ? "Item updated" : "Item saved");
       }
-      case "del-item": { const it = byId(state.items, id); return confirmBox("Delete item", `Delete <b>${esc(it.name)}</b>? Orders that already use it are not changed.`, "Delete item", () => { state.items = state.items.filter((x) => x.id !== id); save(); render(); toast("Item deleted"); }); }
+      case "del-item": { const it = byId(state.items, id); return confirmBox("Delete item", `Delete <b>${esc(it.name)}</b>? Orders that already use it are not changed.`, "Delete item", () => { it.deleted = true; touch("items", it); save(); render(); toast("Item deleted"); }); }
       /* settings */
       case "save-settings": {
-        const rate = Number($("#s-rate").value);
+        const rate = Number($("#s-rate").value), dueRaw = $("#s-due").value.trim();
         if (!(rate >= 0 && rate <= 100)) { $("#s-rate").classList.add("invalid"); return toast("VAT rate must be between 0 and 100."); }
-        Object.assign(state.settings, { companyName: $("#s-company").value.trim(), phone: $("#s-phone").value.trim(), footer: $("#s-footer").value.trim(), vatDefault: $("#s-vat").checked, vatRate: rate, dueDays: Math.max(0, parseInt($("#s-due").value, 10) || 0) });
-        if (!draft.lines.length && !draft.id) { draft.vat = state.settings.vatDefault; draft.vatRate = rate; keepDraft(); }
-        save(); render(); return toast("Settings saved");
+        Object.assign(state.settings, { companyName: $("#s-company").value.trim(), phone: $("#s-phone").value.trim(), footer: $("#s-footer").value.trim(), vatDefault: $("#s-vat").checked, vatRate: rate, dueDays: dueRaw === "" ? "" : Math.max(0, parseInt(dueRaw, 10) || 0) });
+        touch("settings", state.settings);
+        if (!draft.lines.length && !draft.id) { draft = newDraft({ customerId: draft.customerId }); keepDraft(); }
+        save(); render(); return toast("Company settings saved");
       }
+      case "st-add": readStatuses(); stEdit.splice(stEdit.length - 2, 0, { old: "", name: "" }); render(); { const el = $$("[data-st]")[stEdit.length - 3]; if (el) el.focus(); } return;
+      case "st-up": case "st-down": { readStatuses(); const i = Number(b.dataset.i), j = b.dataset.act === "st-up" ? i - 1 : i + 1; [stEdit[i], stEdit[j]] = [stEdit[j], stEdit[i]]; return render(); }
+      case "st-del": readStatuses(); stEdit.splice(Number(b.dataset.i), 1); return render();
+      case "st-save": {
+        readStatuses();
+        const names = stEdit.map((x) => x.name.trim());
+        if (names.some((n) => !n)) return toast("A status name is empty. Type a name or delete it.");
+        if (new Set(names.map((n) => n.toLowerCase())).size !== names.length) return toast("Two statuses have the same name.");
+        stEdit.forEach((x, i) => {
+          if (x.old && x.old !== names[i]) state.orders.forEach((o) => { if (o.status === x.old) { o.status = names[i]; touch("orders", o); } });
+        });
+        state.settings.statuses = names; touch("settings", state.settings);
+        stEdit = null; save(); render(); return toast("Statuses saved");
+      }
+      case "theme": device.theme = b.dataset.themeSet; applyTheme(); persist(); return render();
+      case "save-device": {
+        const series = $("#d-series").value.trim().toUpperCase(), next = parseInt($("#d-next").value, 10);
+        if (!/^[A-Z0-9][A-Z0-9-]{0,9}$/.test(series)) { $("#d-series").classList.add("invalid"); return toast("Series can use letters, numbers and dashes, for example JO-A."); }
+        if (!(next >= 1)) { $("#d-next").classList.add("invalid"); return toast("Next number must be 1 or more."); }
+        device.series = series.replace(/-+$/, ""); device.next = next; persist(); render();
+        return toast(`Next order will be ${previewNumber()}`);
+      }
+      case "sync-connect": case "sync-test": {
+        const url = (b.dataset.act === "sync-connect" ? $("#y-url").value : device.sync.url).trim(), pin = (b.dataset.act === "sync-connect" ? $("#y-pin").value : device.sync.pin).trim();
+        if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(url)) { $("#y-url").classList.add("invalid"); return toast("Paste the sync link that starts with https://script.google.com/"); }
+        if (!pin) { $("#y-pin").classList.add("invalid"); return toast("Enter the team PIN."); }
+        const prev = { ...device.sync };
+        device.sync.url = url; device.sync.pin = pin;
+        b.disabled = true; b.textContent = "Checking…";
+        try {
+          await callSync({ action: "ping" });
+          if (b.dataset.act === "sync-test") { toast("Connection works."); device.sync = prev; device.sync.error = ""; persist(); return render(); }
+          device.sync = { url, pin, since: 0, lastAt: "", lastMsg: "", error: "" };
+          if (state.demo) { state = blank(); draft = newDraft(); keepDraft(); dirty.clear(); } else markAllDirty();
+          persist(); render(); toast("Connected. Syncing now…");
+          if (device.series === "JO") toast("Connected. Set a different order series for this device, e.g. JO-B.");
+          await syncNow(true);
+        } catch (err) {
+          device.sync = prev; persist(); render();
+          toast(err && err.message && !/Failed to fetch|NetworkError|Load failed/i.test(err.message) ? err.message : "Could not reach the sync link. Check the internet and the link.");
+        }
+        return;
+      }
+      case "sync-now": return syncNow(true);
+      case "sync-off": return confirmBox("Turn off sync", "Stop syncing this device? Its data stays here, and the shared Drive folder is not changed.", "Turn off", () => { device.sync = { url: "", pin: "", since: 0, lastAt: "", lastMsg: "", error: "" }; persist(); render(); toast("Sync turned off on this device"); });
       case "copy-backup": {
-        const txt = JSON.stringify(state);
+        const txt = backupJson();
         if (NATIVE && Plug.Clipboard) { try { await Plug.Clipboard.write({ string: txt }); return toast("Backup copied. Paste it somewhere safe."); } catch (err) { /* fall back below */ } }
         try { await navigator.clipboard.writeText(txt); return toast("Backup copied. Paste it somewhere safe."); }
         catch (err) { const ta = $("#s-restore"); ta.value = txt; ta.focus(); ta.select(); return toast("Backup text is in the box below. Copy it from there."); }
       }
-      case "share-backup":
-        try { await Plug.Share.share({ title: `Job Orders backup ${today()}`, text: JSON.stringify(state), dialogTitle: "Save backup to…" }); }
-        catch (err) { /* user closed the share sheet */ }
+      case "share-backup": {
+        try {
+          const w = await Plug.Filesystem.writeFile({ path: backupName(), data: backupJson(), directory: "CACHE", encoding: "utf8" });
+          await Plug.Share.share({ title: backupName(), files: [w.uri], dialogTitle: "Save backup to…" });
+        } catch (err) { if (err && !/cancel/i.test(String(err.message || err))) toast("Could not share the backup file."); }
         return;
-      case "share-other":
-        try { await Plug.Share.share({ text: $("#msg").value, dialogTitle: "Send order with…" }); } catch (err) { /* closed */ }
-        return;
+      }
       case "download-backup": {
         const a = document.createElement("a");
-        a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: "application/json" }));
-        a.download = `job-orders-backup-${today()}.json`; document.body.appendChild(a); a.click();
-        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); return;
+        a.href = URL.createObjectURL(new Blob([backupJson()], { type: "application/json" }));
+        a.download = backupName(); document.body.appendChild(a); a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+        return toast(`Saved ${backupName()} to Downloads`);
       }
-      case "restore": {
-        let s;
-        try { s = JSON.parse($("#s-restore").value); if (!Array.isArray(s.orders) || !Array.isArray(s.customers) || !Array.isArray(s.items)) throw 0; }
-        catch (err) { return toast("That text is not a Job Orders backup."); }
-        return confirmBox("Restore backup", `Replace everything on this device with the backup (${s.orders.length} orders, ${s.customers.length} customers, ${s.items.length} items)?`, "Restore", () => { state = { ...blank(), ...s, settings: { ...DEFAULT_SETTINGS, ...s.settings } }; save(); render(); toast("Backup restored"); });
-      }
-      case "clear-sample": return confirmBox("Clear sample data", "Remove the sample customers, items and orders? Your settings are kept.", "Clear samples", () => { const keep = state.settings; state = blank(); state.settings = { ...keep, companyName: keep.companyName.replace(/\s*\(Sample\)$/, ""), phone: keep.phone === "+966 12 000 0000" ? "" : keep.phone }; draft = newDraft(); keepDraft(); save(); render(); toast("Samples cleared. Add your first item."); });
-      case "load-sample": return confirmBox("Load sample data", "Replace everything with sample data? Copy a backup first if you want to keep your records.", "Load samples", () => { state = sample(); draft = newDraft(); keepDraft(); save(); render(); toast("Sample data loaded"); });
-      case "wipe": return confirmBox("Delete everything", "Delete all orders, customers, items and settings on this device? This cannot be undone.", "Delete everything", () => { state = blank(); draft = newDraft(); keepDraft(); save(); render(); toast("All data deleted"); });
+      case "restore-file": { const f = $("#restore-file"); f.value = ""; return f.click(); }
+      case "restore": return restoreFrom($("#s-restore").value);
+      case "clear-sample": return confirmBox("Clear sample data", "Remove the sample customers, items and orders? Your company settings are kept.", "Clear samples", () => { const keep = state.settings; state = blank(); state.settings = { ...keep, companyName: keep.companyName.replace(/\s*\(Sample\)$/, ""), phone: keep.phone === "+966 12 000 0000" ? "" : keep.phone, dueDays: "", updatedAt: nowIso() }; device.next = 1; dirty.clear(); draft = newDraft(); keepDraft(); stEdit = null; save(); render(); toast("Samples cleared. Add your first item."); });
+      case "load-sample": return confirmBox("Load sample data", "Replace everything on this device with sample data? Share a backup first if you want to keep your records.", "Load samples", () => { state = sample(); dirty.clear(); draft = newDraft(); keepDraft(); stEdit = null; persist(); render(); toast("Sample data loaded"); });
+      case "wipe": return confirmBox("Delete everything", `Delete all orders, customers, items and settings on this device? This cannot be undone.${device.sync.url ? " The shared Drive folder is not changed." : ""}`, "Delete everything", () => { state = blank(); state.demo = false; dirty.clear(); device.sync.since = 0; draft = newDraft(); keepDraft(); stEdit = null; persist(); render(); toast("All data deleted on this device"); });
     }
   });
   document.addEventListener("input", (e) => {
@@ -748,6 +1149,14 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     const k = map[e.target.id];
     if (k) { filters[k] = e.target.value; const pos = e.target.selectionStart; render(); const el = $("#" + e.target.id); el.focus(); el.setSelectionRange(pos, pos); }
     else if (e.target.classList.contains("invalid")) e.target.classList.remove("invalid");
+  });
+  $("#restore-file").addEventListener("change", (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => restoreFrom(String(r.result));
+    r.onerror = () => toast("Could not read that file.");
+    r.readAsText(f);
   });
 
   if (NATIVE && Plug.App) {
@@ -759,6 +1168,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   }
 
   go(["new", "orders", "customers", "items", "settings"].includes(tab) ? tab : "new");
+  if (device.sync.url) syncNow(false);
 })();
 </script>
 </body>
