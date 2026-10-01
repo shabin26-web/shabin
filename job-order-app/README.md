@@ -19,6 +19,12 @@ A phone-friendly app for a printing shop to create job orders and send them on W
    tap one for the receipt details and **Send receipt** on WhatsApp (amount, method, order, paid to
    date and balance).
 
+7. **PDF**: on an order or a receipt tap **PDF** to create an A5 PDF (logo, company name,
+   contact number, address, email; items with details, totals, payments / receipt amount and
+   balance) and **Share PDF** to WhatsApp, email or Drive. Long orders continue on extra pages.
+   Set the logo, address and email in **Settings → Company**. PDFs are made on the device and
+   work offline (libraries in `vendor/`: jsPDF and html2canvas, MIT).
+
 Dates show as `01-Oct-26`. Statuses (New → Design → Waiting approval → Approved → Printing →
 Finishing → Ready → Delivered, On hold, Cancelled) can be renamed, added and reordered in
 Settings. Appearance can be Auto, Light or Dark.

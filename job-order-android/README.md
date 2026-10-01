@@ -27,6 +27,8 @@ your orders, customers and items (older data is upgraded automatically).
 
 - **Open WhatsApp** opens the WhatsApp app with the message ready for the customer's number.
 - **Other apps** shares the order text to any app (Telegram, SMS, email…).
+- **PDF** (on an order or a receipt) creates an A5 PDF and **Share PDF** sends it; in WhatsApp
+  you then pick the chat (Android does not let apps pre-select the contact for files).
 - **Share backup file** saves all your data as a file to Google Drive, WhatsApp or email.
 - **Sync** shares the same data across phones through one common Gmail: see
   [job-order-sync/README.md](../job-order-sync/README.md).
