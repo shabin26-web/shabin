@@ -8,18 +8,22 @@ and send everything on WhatsApp as text or PDF.
 - **Home**: today at a glance — due today, overdue, in progress, due pending, collected today and
   this month; quick buttons New order, New quotation, Record payment; deliveries due today/overdue
   and recent orders.
-- **Orders**: job orders and quotations (switch at the top); search; filters Active, In progress,
-  Due today, Overdue, Due pending, Paid, any status, Completed; total due pending.
+- **Orders**: job orders and quotations (switch at the top); search; total due pending.
+  Two dropdowns filter job orders: **Filter by → Work** (All active, New, Design, Waiting approval,
+  Approved, Printing, Finishing, Ready, Delivered, On hold, Cancelled, Delivery due today, Delivery
+  overdue, Completed, All) or **Filter by → Payment** (Payment due, Not paid, Partly paid, Payment
+  overdue, Fully paid, All). Each option shows its count; the phone remembers the last choice.
   **Completed** orders (delivered and fully paid, or cancelled) leave the Active list and go last
   in All, but stay in statements, receipts and reports.
-- **Work**: jobs by department (Design, Printing, Finishing, Ready…) with quantities, details and
+- **Work board** (More): jobs by department (Design, Printing, Finishing, Ready…) with quantities, details and
   notes but no prices, delivery date warnings and a **Move to next stage** button. Each phone
   remembers its department, so the printing phone opens on Printing.
 - **＋ New**: job order or quotation — customer, saved or custom items (details in *italics*),
   quantities and prices, optional delivery date / valid-until date, **discount** (SAR or %),
   optional amount paid now, VAT on/off, notes. Totals: subtotal → discount → VAT → total.
-- **More**: **Receipts** (every payment with receipt number, e.g. `RCT-A-0001`, period filters,
-  totals by method), Customers, Items, Quotations, **Reports**, Settings, Sync & backup.
+- **Receipts**: every payment with receipt number (e.g. `RCT-A-0001`), period filters, totals by
+  payment method.
+- **More**: Work board, Customers, Items, Quotations, **Reports**, Settings, Sync & backup.
 
 ## Order sheet (tap an order)
 

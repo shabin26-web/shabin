@@ -292,6 +292,8 @@ details.done-list > summary::-webkit-details-marker { display: none; }
 details.done-list[open] > summary { margin-bottom: 8px; }
 .st-sum { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; font-size: 14px; background: var(--card-2); border-radius: 12px; padding: 12px 14px; }
 .st-sum .g { font-weight: 700; border-top: 1px solid var(--line); padding-top: 6px; }
+.filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 10px; margin-bottom: 12px; }
+.filters select { background: var(--card); box-shadow: var(--shadow); font-weight: 600; font-size: 15px; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--nav) + var(--sab) + 14px); background: var(--ink); color: var(--card); padding: 10px 16px; border-radius: 12px; box-shadow: var(--shadow); z-index: 60; max-width: calc(100vw - 32px); font-size: 14px; }
 @media (max-width: 380px) { .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid3 .amt-cell { grid-column: 1 / -1; } .quick .btn { font-size: 11.5px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
@@ -353,7 +355,7 @@ details.done-list[open] > summary { margin-bottom: 8px; }
   <button data-tab="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>Home</button>
   <button data-tab="orders"><svg viewBox="0 0 24 24"><path d="M7 3h10l2 3v15H5V6z"/><path d="M9 10h6M9 14h6M9 18h3"/></svg>Orders</button>
   <button data-tab="new" class="new-btn" aria-label="New order"><span class="plus"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></button>
-  <button data-tab="work"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg>Work</button>
+  <button data-tab="receipts"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Receipts</button>
   <button data-tab="more"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</button>
 </div></nav>
 
@@ -651,10 +653,12 @@ details.done-list[open] > summary { margin-bottom: 8px; }
 
   /* ---------- navigation ---------- */
   const PAGES = ["home", "orders", "new", "work", "receipts", "more", "customers", "items", "reports", "settings"];
-  const NAV_OF = { receipts: "more", customers: "more", items: "more", reports: "more", settings: "more" };
+  const NAV_OF = { work: "more", customers: "more", items: "more", reports: "more", settings: "more" };
   let tab = "home";
   try { tab = localStorage.getItem(KEY + ".tab") || "home"; } catch (e) {}
-  const filters = { view: "orders", status: "Active", qstatus: "Quote", q: "", cq: "", iq: "", rq: "", rperiod: "month", rep: "month" };
+  const filters = { view: "orders", otype: "work", pay: "Due", status: "Active", qstatus: "Quote", q: "", cq: "", iq: "", rq: "", rperiod: "month", rep: "month" };
+  try { Object.assign(filters, JSON.parse(localStorage.getItem(KEY + ".filters")) || {}); } catch (e) {}
+  function saveFilters() { try { localStorage.setItem(KEY + ".filters", JSON.stringify({ otype: filters.otype, pay: filters.pay, status: filters.status })); } catch (e) {} }
   function go(t) {
     if (t !== tab) stEdit = null;
     tab = t;
@@ -955,29 +959,41 @@ details.done-list[open] > summary { margin-bottom: 8px; }
     if (f === "Due") return dueOf(o) > 0;
     if (f === "Paid") return payState(o).label === "Paid";
     if (f === "All") return true;
+    // payment status
+    if (f === "pay:All") return true;
+    if (f === "pay:Due") return dueOf(o) > 0;
+    if (f === "pay:Unpaid") return dueOf(o) > 0 && totals(o).paid === 0;
+    if (f === "pay:Partly") return dueOf(o) > 0 && totals(o).paid > 0;
+    if (f === "pay:Overdue") return dueOf(o) > 0 && (o.status === "Delivered" || (o.dueDate && o.dueDate < t));
+    if (f === "pay:Paid") return o.status !== "Cancelled" && payState(o).label === "Paid";
     return o.status === f;
   }
   views.orders = () => {
     const qv = filters.view === "quotes";
     const q = filters.q.toLowerCase(), t = today();
     const base = qv ? quotes() : jobs();
-    const f = qv ? filters.qstatus : filters.status;
+    const f = qv ? filters.qstatus : filters.otype === "pay" ? "pay:" + filters.pay : filters.status;
     let list = base.filter((o) => (qv ? f === "All" || o.status === f : orderFilter(o, f, t)));
     // completed orders always go to the end of the list
     list.sort((a, b) => (qv ? 0 : isDone(a) - isDone(b)) || (b.date || "").localeCompare(a.date || "") || b.no.localeCompare(a.no));
     if (q) list = list.filter((o) => [o.no, o.customer.name, o.customer.company, o.customer.phone, ...o.lines.map((l) => l.name)].join(" ").toLowerCase().includes(q));
     const cnt = (fn) => base.filter(fn).length;
-    const chips = qv
-      ? [["Quote", "Open"], ["Converted", "Converted"], ["Declined", "Declined"], ["All", "All"]].map(([k, l]) => [k, l, cnt((o) => k === "All" || o.status === k)])
-      : [["Active", "Active"], ["Open", "In progress"], ["Today", "Due today"], ["Overdue", "Overdue"], ["Due", "Due pending"], ["Paid", "Paid"], ...state.settings.statuses.map((s) => [s, s]), ["Completed", "Completed"], ["All", "All"]]
-          .map(([k, l]) => [k, l, cnt((o) => orderFilter(o, k, t))]).filter(([k, , n]) => n || ["Active", "All", "Due", "Completed"].includes(k));
+    const chips = qv ? [["Quote", "Open"], ["Converted", "Converted"], ["Declined", "Declined"], ["All", "All"]].map(([k, l]) => [k, l, cnt((o) => k === "All" || o.status === k)]) : [];
+    // job orders: two dropdowns — what to filter by, then the value (with counts)
+    const workOpts = [["Active", "All active (not completed)"], ...state.settings.statuses.map((x) => [x, x]), ["Today", "Delivery due today"], ["Overdue", "Delivery overdue"], ["Completed", "Completed"], ["All", "All orders"]];
+    const payOpts = [["Due", "Payment due (all)"], ["Unpaid", "Not paid"], ["Partly", "Partly paid"], ["Overdue", "Payment overdue"], ["Paid", "Fully paid"], ["All", "All orders"]];
+    const opts = filters.otype === "pay" ? payOpts.map(([k, l]) => [k, l, cnt((o) => orderFilter(o, "pay:" + k, t))]) : workOpts.map(([k, l]) => [k, l, cnt((o) => orderFilter(o, k, t))]);
+    const cur = filters.otype === "pay" ? filters.pay : filters.status;
+    const filterBar = `<div class="filters">
+      <label class="f"><span>Filter by</span><select id="of-type"><option value="work" ${filters.otype === "pay" ? "" : "selected"}>Work</option><option value="pay" ${filters.otype === "pay" ? "selected" : ""}>Payment</option></select></label>
+      <label class="f"><span>${filters.otype === "pay" ? "Payment status" : "Work status"}</span><select id="of-val">${opts.map(([k, l, n]) => `<option value="${esc(k)}" ${k === cur ? "selected" : ""}>${esc(l)} (${n})</option>`).join("")}</select></label></div>`;
     const dueAll = jobs().reduce((s, o) => s + dueOf(o), 0);
     const shown = list.slice(0, 300);
     return `<div class="page-head"><div><h1>${qv ? "Quotations" : "Orders"}</h1><p>${base.length} saved</p></div></div>
       <div class="seg" style="margin-bottom:12px"><button type="button" data-act="orders-view" data-v="orders" class="${qv ? "" : "on"}">Job orders</button><button type="button" data-act="orders-view" data-v="quotes" class="${qv ? "on" : ""}">Quotations</button></div>
       ${qv ? "" : `<div class="due-sum"><span>Total due pending</span><b class="${dueAll ? "has" : ""}">${sar(dueAll)}</b></div>`}
       <input type="search" id="o-search" class="search" placeholder="Search number, customer, item" value="${esc(filters.q)}">
-      <div class="chips">${chips.map(([k, l, n]) => `<button class="chip ${f === k ? "on" : ""}" data-status-filter="${esc(k)}">${esc(l)} ${n}</button>`).join("")}</div>
+      ${qv ? `<div class="chips">${chips.map(([k, l, n]) => `<button class="chip ${f === k ? "on" : ""}" data-status-filter="${esc(k)}">${esc(l)} ${n}</button>`).join("")}</div>` : filterBar}
       <div class="list">${shown.map(orderRow).join("") || `<div class="empty">${qv ? "No quotations here. Tap ＋ and choose Quotation." : "No orders here."}</div>`}</div>
       ${list.length > shown.length ? `<p class="small muted" style="text-align:center">Showing the latest 300 of ${list.length}. Search to find older ones.</p>` : ""}`;
   };
@@ -1087,7 +1103,7 @@ details.done-list[open] > summary { margin-bottom: 8px; }
     const total = list.reduce((s, x) => s + hal(x.p.amount), 0);
     const byM = METHODS.map((m) => [m, list.filter((x) => x.p.method === m).reduce((s, x) => s + hal(x.p.amount), 0)]).filter(([, v]) => v);
     const shown = list.slice(0, 300);
-    return `${backTo()}<div class="page-head"><div><h1>Receipts</h1><p>Every payment received</p></div><button class="btn primary sm" data-act="quick-pay">+ Payment</button></div>
+    return `<div class="page-head"><div><h1>Receipts</h1><p>Every payment received</p></div><button class="btn primary sm" data-act="quick-pay">+ Payment</button></div>
       <div class="chips">${[["today", "Today"], ["month", "This month"], ["last", "Last month"], ["all", "All"]].map(([k, l]) => `<button class="chip ${filters.rperiod === k ? "on" : ""}" data-act="r-period" data-p="${k}">${l}</button>`).join("")}</div>
       <div class="sum-card"><span>Received · ${list.length} receipt${list.length === 1 ? "" : "s"}</span><span class="big">${sar(total)}</span>
         ${byM.map(([m, v]) => `<span class="muted">${esc(m)}</span><span class="num">${fmt(v)}</span>`).join("")}</div>
@@ -1388,7 +1404,7 @@ details.done-list[open] > summary { margin-bottom: 8px; }
       const list = open.filter((o) => o.status === dept).sort(byDue);
       body = `<div class="list">${list.map(workCard).join("") || `<div class="empty">Nothing in ${esc(dept)} right now.</div>`}</div>`;
     }
-    return `<div class="page-head"><div><h1>Work</h1><p>Jobs by department. This phone opens on the one you pick.</p></div></div>
+    return `${backTo()}<div class="page-head"><div><h1>Work board</h1><p>Jobs by department. This phone opens on the one you pick.</p></div></div>
       <div class="chips">${chips.map(([k, n]) => `<button class="chip ${dept === k ? "on" : ""}" data-act="work-dept" data-d="${esc(k)}">${esc(k)} ${n}</button>`).join("")}</div>
       ${body}`;
   };
@@ -1398,7 +1414,7 @@ details.done-list[open] > summary { margin-bottom: 8px; }
     const row = (t, ic, title, sub) => `<button data-tab="${t}"><span class="ic">${ic}</span><span><b>${title}</b><small>${sub}</small></span><span class="chev">›</span></button>`;
     return `<div class="page-head"><div><h1>More</h1></div></div>
       <div class="menu">
-        ${row("receipts", IC.cash, "Receipts", `${allReceipts().length} payments received`)}
+        ${row("work", IC.chart.replace("M4 20V10M10 20V4M16 20v-7M22 20H2", "M4 20V8M10 20V4M16 20V12M22 20H2"), "Work board", "Jobs by department for the workshop")}
         ${row("customers", IC.users, "Customers", `${live(state.customers).length} saved · history, reminders, statements`)}
         ${row("items", IC.box, "Items", `${live(state.items).length} products with prices`)}
         <button data-act="go-quotes"><span class="ic">${IC.quote}</span><span><b>Quotations</b><small>${quotes().filter((o) => o.status === "Quote").length} open</small></span><span class="chev">›</span></button>
@@ -1774,7 +1790,12 @@ details.done-list[open] > summary { margin-bottom: 8px; }
     switch (b.dataset.act) {
       case "confirm-yes": { const f = confirmYes; confirmYes = null; closeDlg(); return f && f(); }
       /* home & navigation */
-      case "go-orders": filters.view = "orders"; filters.status = b.dataset.f || "Open"; return go("orders");
+      case "go-orders": {
+        const f = b.dataset.f || "Active";
+        filters.view = "orders";
+        if (f === "Due") { filters.otype = "pay"; filters.pay = "Due"; } else { filters.otype = "work"; filters.status = f === "Open" ? "Active" : f; }
+        saveFilters(); return go("orders");
+      }
       case "go-quotes": filters.view = "quotes"; filters.qstatus = "Quote"; return go("orders");
       case "go-receipts": filters.rperiod = b.dataset.p || "month"; return go("receipts");
       case "go-settings-sec": go("settings"); { const el = $("#" + b.dataset.sec); if (el) el.scrollIntoView({ block: "start" }); } return;
@@ -1994,6 +2015,10 @@ details.done-list[open] > summary { margin-bottom: 8px; }
       case "load-sample": return confirmBox("Load sample data", "Replace everything on this device with sample data? Share a backup first if you want to keep your records.", "Load samples", () => { state = sample(); dirty.clear(); draft = newDraft(); keepDraft(); stEdit = null; persist(); render(); toast("Sample data loaded"); });
       case "wipe": return confirmBox("Delete everything", `Delete all orders, customers, items and settings on this device? This cannot be undone.${device.sync.url ? " The shared Drive folder is not changed." : ""}`, "Delete everything", () => { state = blank(); state.demo = false; dirty.clear(); device.sync.since = 0; draft = newDraft(); keepDraft(); stEdit = null; persist(); render(); toast("All data deleted on this device"); });
     }
+  });
+  document.addEventListener("change", (e) => {
+    if (e.target.id === "of-type") { filters.otype = e.target.value; saveFilters(); return render(); }
+    if (e.target.id === "of-val") { if (filters.otype === "pay") filters.pay = e.target.value; else filters.status = e.target.value; saveFilters(); return render(); }
   });
   document.addEventListener("input", (e) => {
     const map = { "o-search": "q", "c-search": "cq", "i-search": "iq", "r-search": "rq" };
