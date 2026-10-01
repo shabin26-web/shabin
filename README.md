@@ -15,6 +15,7 @@ Nothing here is production code. Break it, fix it, revert it — that is the poi
 | `.github/ISSUE_TEMPLATE/` | Templates that pre-fill new issues |
 | `.github/pull_request_template.md` | Template that pre-fills new pull requests |
 | `TASKS.md` | **Start here.** The exercise checklist |
+| `job-order-app/` | Job Order Sender: save items and customers, create a job order and send it on WhatsApp. See [job-order-app/README.md](job-order-app/README.md) |
 | `printing-ops/` | PrintOps Ledger: a browser app to track a printing company's jobs, invoices and payments. See [printing-ops/README.md](printing-ops/README.md) |
 | `CONTRIBUTING.md` | The workflow, step by step, with the exact commands |
 
