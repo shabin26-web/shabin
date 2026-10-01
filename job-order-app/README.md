@@ -8,14 +8,18 @@ and send everything on WhatsApp as text or PDF.
 - **Home**: today at a glance — due today, overdue, in progress, due pending, collected today and
   this month; quick buttons New order, New quotation, Record payment; deliveries due today/overdue
   and recent orders.
-- **Orders**: job orders and quotations (switch at the top); search; filters Open, Due today,
-  Overdue, Due pending, Paid, any status; total due pending.
+- **Orders**: job orders and quotations (switch at the top); search; filters Active, In progress,
+  Due today, Overdue, Due pending, Paid, any status, Completed; total due pending.
+  **Completed** orders (delivered and fully paid, or cancelled) leave the Active list and go last
+  in All, but stay in statements, receipts and reports.
+- **Work**: jobs by department (Design, Printing, Finishing, Ready…) with quantities, details and
+  notes but no prices, delivery date warnings and a **Move to next stage** button. Each phone
+  remembers its department, so the printing phone opens on Printing.
 - **＋ New**: job order or quotation — customer, saved or custom items (details in *italics*),
   quantities and prices, optional delivery date / valid-until date, **discount** (SAR or %),
   optional amount paid now, VAT on/off, notes. Totals: subtotal → discount → VAT → total.
-- **Receipts**: every payment with receipt number (e.g. `RCT-A-0001`), period filters, totals by
-  payment method.
-- **More**: Customers, Items, Quotations, **Reports**, Settings, Sync & backup.
+- **More**: **Receipts** (every payment with receipt number, e.g. `RCT-A-0001`, period filters,
+  totals by method), Customers, Items, Quotations, **Reports**, Settings, Sync & backup.
 
 ## Order sheet (tap an order)
 
@@ -29,8 +33,12 @@ marks the quote Converted), Declined / Reopen. Quotations are not counted in sal
 
 ## Customers
 
-Call, WhatsApp chat, **Reminder** for all unpaid orders, **Statement PDF** (orders, receipts,
-running balance), new order or quotation, order history.
+Call, WhatsApp chat, **Reminder** for all unpaid orders, **Statement** for any period (This month,
+Last month, This year, All time or From–To dates) with opening balance, orders, receipts and
+closing balance — as PDF or WhatsApp text — new order or quotation, active orders and a
+collapsed Completed list.
+
+WhatsApp messages end with the company name in bold and the phone number on the next line.
 
 ## Reports
 

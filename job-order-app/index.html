@@ -270,6 +270,28 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
 .rtable tfoot td { font-weight: 700; border-bottom: 0; border-top: 1px solid var(--line); }
 .rtable .num { font-size: 13px; }
 
+/* work board */
+.wcard { background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+.wcard-h { width: 100%; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 12px 14px 8px; }
+.wcard-h .t { font-weight: 600; overflow-wrap: anywhere; }
+.wcard-h .s { color: var(--ink-3); font-size: 13px; }
+.wcard ul { list-style: none; margin: 0; padding: 0 14px 6px; display: flex; flex-direction: column; gap: 6px; }
+.wcard li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 10px; font-size: 14px; padding: 6px 0; border-top: 1px solid var(--line-2); }
+.wcard li .q { font: 600 13.5px var(--f-mono); white-space: nowrap; }
+.wcard li small { display: block; color: var(--ink-3); }
+.wcard .wn { padding: 0 14px 8px; font-size: 13px; color: var(--ink-2); }
+.wcard .wf { padding: 8px 14px 12px; display: flex; gap: 8px; }
+.wcard .wf .btn { flex: 1; min-height: 42px; }
+.due-chip { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap; background: var(--line-2); color: var(--ink-2); align-self: start; }
+.due-chip.late { background: var(--bad-soft); color: var(--bad); }
+.due-chip.today { background: var(--warn-soft); color: var(--warn); }
+.grp-h { display: flex; align-items: center; justify-content: space-between; margin: 18px 2px 8px; }
+.grp-h h2 { font-size: 1rem; }
+details.done-list > summary { cursor: pointer; font-weight: 600; color: var(--ink-2); padding: 6px 2px; list-style: none; }
+details.done-list > summary::-webkit-details-marker { display: none; }
+details.done-list[open] > summary { margin-bottom: 8px; }
+.st-sum { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; font-size: 14px; background: var(--card-2); border-radius: 12px; padding: 12px 14px; }
+.st-sum .g { font-weight: 700; border-top: 1px solid var(--line); padding-top: 6px; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--nav) + var(--sab) + 14px); background: var(--ink); color: var(--card); padding: 10px 16px; border-radius: 12px; box-shadow: var(--shadow); z-index: 60; max-width: calc(100vw - 32px); font-size: 14px; }
 @media (max-width: 380px) { .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid3 .amt-cell { grid-column: 1 / -1; } .quick .btn { font-size: 11.5px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
@@ -331,7 +353,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   <button data-tab="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>Home</button>
   <button data-tab="orders"><svg viewBox="0 0 24 24"><path d="M7 3h10l2 3v15H5V6z"/><path d="M9 10h6M9 14h6M9 18h3"/></svg>Orders</button>
   <button data-tab="new" class="new-btn" aria-label="New order"><span class="plus"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></button>
-  <button data-tab="receipts"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Receipts</button>
+  <button data-tab="work"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg>Work</button>
   <button data-tab="more"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</button>
 </div></nav>
 
@@ -437,6 +459,8 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   }
   const isQuote = (o) => o.kind === "quote";
   const isClosed = (o) => o.status === "Delivered" || o.status === "Cancelled";
+  /** Fully completed: delivered and paid, or cancelled. Moves out of the active lists. */
+  const isDone = (o) => o.status === "Cancelled" || (o.status === "Delivered" && totals(o).bal <= 0);
   const tone = (s) => STATUS_TONE[s] || "";
   const dueOf = (o) => (isQuote(o) || o.status === "Cancelled" ? 0 : Math.max(totals(o).bal, 0));
 
@@ -523,6 +547,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     if (!d.qseries) d.qseries = seriesFor(d.series, "QT");
     if (!d.qnext) d.qnext = 1;
     if (!d.theme) d.theme = "auto";
+    if (!d.dept) d.dept = "All";
     if (!d.sync) d.sync = { url: "", pin: "", since: 0, lastAt: "", lastMsg: "", error: "" };
     if (!Array.isArray(d.dirty)) d.dirty = [];
     return d;
@@ -625,11 +650,11 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   }
 
   /* ---------- navigation ---------- */
-  const PAGES = ["home", "orders", "new", "receipts", "more", "customers", "items", "reports", "settings"];
-  const NAV_OF = { customers: "more", items: "more", reports: "more", settings: "more" };
+  const PAGES = ["home", "orders", "new", "work", "receipts", "more", "customers", "items", "reports", "settings"];
+  const NAV_OF = { receipts: "more", customers: "more", items: "more", reports: "more", settings: "more" };
   let tab = "home";
   try { tab = localStorage.getItem(KEY + ".tab") || "home"; } catch (e) {}
-  const filters = { view: "orders", status: "Open", qstatus: "Quote", q: "", cq: "", iq: "", rq: "", rperiod: "month", rep: "month" };
+  const filters = { view: "orders", status: "Active", qstatus: "Quote", q: "", cq: "", iq: "", rq: "", rperiod: "month", rep: "month" };
   function go(t) {
     if (t !== tab) stEdit = null;
     tab = t;
@@ -656,7 +681,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     const colMonth = recv.filter((x) => x.p.date >= monthStart && x.p.date <= t).reduce((s, x) => s + hal(x.p.amount), 0);
     const due = js.reduce((s, o) => s + dueOf(o), 0);
     const urgent = overdue.concat(dueToday).sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 5);
-    const recent = js.slice().sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || "")).slice(0, 5);
+    const recent = js.filter((o) => !isDone(o)).sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || "")).slice(0, 5);
     const [y, m, d] = t.split("-");
     return `<div class="hello"><h1>${h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"}</h1><p>${DAYS[new Date(+y, +m - 1, +d).getDay()]}, ${fmtDate(t)}</p></div>
       <div class="tiles">
@@ -863,7 +888,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
 
   /* ---------- WhatsApp messages ---------- */
   const italic = (t) => (t.includes("_") ? t : `_${t}_`);
-  const sign = () => { const s = state.settings; return s.companyName ? `— ${s.companyName}${s.phone ? " · " + s.phone : ""}` : ""; };
+  const sign = () => { const s = state.settings; return [s.companyName ? `*${s.companyName}*` : "", s.phone || ""].filter(Boolean).join("\n"); };
   const bankLines = () => { const s = state.settings; return s.iban ? [`Bank transfer: ${s.bankName ? s.bankName + " · " : ""}IBAN ${s.iban}`] : []; };
   function message(o) {
     const s = state.settings, t = totals(o), q = isQuote(o);
@@ -922,6 +947,8 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
 
   /* ---------- orders & quotations ---------- */
   function orderFilter(o, f, t) {
+    if (f === "Active") return !isDone(o);
+    if (f === "Completed") return isDone(o);
     if (f === "Open") return !isClosed(o);
     if (f === "Today") return !isClosed(o) && o.dueDate === t;
     if (f === "Overdue") return !isClosed(o) && o.dueDate && o.dueDate < t;
@@ -936,13 +963,14 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     const base = qv ? quotes() : jobs();
     const f = qv ? filters.qstatus : filters.status;
     let list = base.filter((o) => (qv ? f === "All" || o.status === f : orderFilter(o, f, t)));
-    list.sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.no.localeCompare(a.no));
+    // completed orders always go to the end of the list
+    list.sort((a, b) => (qv ? 0 : isDone(a) - isDone(b)) || (b.date || "").localeCompare(a.date || "") || b.no.localeCompare(a.no));
     if (q) list = list.filter((o) => [o.no, o.customer.name, o.customer.company, o.customer.phone, ...o.lines.map((l) => l.name)].join(" ").toLowerCase().includes(q));
     const cnt = (fn) => base.filter(fn).length;
     const chips = qv
       ? [["Quote", "Open"], ["Converted", "Converted"], ["Declined", "Declined"], ["All", "All"]].map(([k, l]) => [k, l, cnt((o) => k === "All" || o.status === k)])
-      : [["Open", "Open"], ["Today", "Due today"], ["Overdue", "Overdue"], ["Due", "Due pending"], ["Paid", "Paid"], ...state.settings.statuses.map((s) => [s, s]), ["All", "All"]]
-          .map(([k, l]) => [k, l, cnt((o) => orderFilter(o, k, t))]).filter(([k, , n]) => n || ["Open", "All", "Due"].includes(k));
+      : [["Active", "Active"], ["Open", "In progress"], ["Today", "Due today"], ["Overdue", "Overdue"], ["Due", "Due pending"], ["Paid", "Paid"], ...state.settings.statuses.map((s) => [s, s]), ["Completed", "Completed"], ["All", "All"]]
+          .map(([k, l]) => [k, l, cnt((o) => orderFilter(o, k, t))]).filter(([k, , n]) => n || ["Active", "All", "Due", "Completed"].includes(k));
     const dueAll = jobs().reduce((s, o) => s + dueOf(o), 0);
     const shown = list.slice(0, 300);
     return `<div class="page-head"><div><h1>${qv ? "Quotations" : "Orders"}</h1><p>${base.length} saved</p></div></div>
@@ -1059,7 +1087,7 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     const total = list.reduce((s, x) => s + hal(x.p.amount), 0);
     const byM = METHODS.map((m) => [m, list.filter((x) => x.p.method === m).reduce((s, x) => s + hal(x.p.amount), 0)]).filter(([, v]) => v);
     const shown = list.slice(0, 300);
-    return `<div class="page-head"><div><h1>Receipts</h1><p>Every payment received</p></div><button class="btn primary sm" data-act="quick-pay">+ Payment</button></div>
+    return `${backTo()}<div class="page-head"><div><h1>Receipts</h1><p>Every payment received</p></div><button class="btn primary sm" data-act="quick-pay">+ Payment</button></div>
       <div class="chips">${[["today", "Today"], ["month", "This month"], ["last", "Last month"], ["all", "All"]].map(([k, l]) => `<button class="chip ${filters.rperiod === k ? "on" : ""}" data-act="r-period" data-p="${k}">${l}</button>`).join("")}</div>
       <div class="sum-card"><span>Received · ${list.length} receipt${list.length === 1 ? "" : "s"}</span><span class="big">${sar(total)}</span>
         ${byM.map(([m, v]) => `<span class="muted">${esc(m)}</span><span class="num">${fmt(v)}</span>`).join("")}</div>
@@ -1166,31 +1194,68 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       <div class="sign"><span>Received by</span><span>Customer signature</span></div>
       ${pdfFooter()}</div>`;
   }
-  /** Customer statement: orders as debits, receipts as credits, running balance. */
-  function statementRows(c) {
-    const os = jobs().filter((o) => o.customerId === c.id && o.status !== "Cancelled");
-    const rows = [];
-    os.forEach((o) => {
-      rows.push({ date: o.date, ref: o.no, det: o.lines.map((l) => l.name).join(", "), dr: totals(o).total, cr: 0 });
-      (o.payments || []).forEach((p) => rows.push({ date: p.date, ref: p.no || "Payment", det: `${p.method} · for ${o.no}`, dr: 0, cr: hal(p.amount) }));
+  /**
+   * Customer statement for a period: orders (not cancelled) as debits, receipts as credits.
+   * Opening = everything before `from`; closing = opening + debits − credits in the period.
+   */
+  function statementData(c, from, to) {
+    const all = [];
+    jobs().filter((o) => o.customerId === c.id && o.status !== "Cancelled").forEach((o) => {
+      all.push({ date: o.date, ref: o.no, det: o.lines.map((l) => l.name).join(", "), dr: totals(o).total, cr: 0 });
+      (o.payments || []).forEach((p) => all.push({ date: p.date, ref: p.no || "Payment", det: `${p.method} · for ${o.no}`, dr: 0, cr: hal(p.amount) }));
     });
-    rows.sort((a, b) => a.date.localeCompare(b.date) || b.dr - a.dr);
-    let bal = 0;
+    all.sort((a, b) => a.date.localeCompare(b.date) || b.dr - a.dr);
+    const f = from || "", t = to || "9999";
+    const opening = all.filter((r) => r.date < f).reduce((s, r) => s + r.dr - r.cr, 0);
+    const rows = all.filter((r) => r.date >= f && r.date <= t);
+    let bal = opening;
     rows.forEach((r) => { bal += r.dr - r.cr; r.bal = bal; });
-    return rows;
-  }
-  function statementDoc(c) {
-    const rows = statementRows(c);
     const dr = rows.reduce((s, r) => s + r.dr, 0), cr = rows.reduce((s, r) => s + r.cr, 0);
+    return { opening, rows, dr, cr, closing: opening + dr - cr, nOrders: rows.filter((r) => r.dr).length, nRec: rows.filter((r) => r.cr).length };
+  }
+  const periodText = (from, to) => (from || to ? `${from ? fmtDate(from) : "Start"} to ${fmtDate(to || today())}` : "All time");
+  function statementDoc(c, from, to) {
+    const d = statementData(c, from, to);
     return `<div class="pdoc">${pdfHeader()}
-      <div class="pt" data-brk><h1>STATEMENT</h1><dl><dt>Date</dt><dd>${fmtDate(today())}</dd><dt>Balance due</dt><dd class="mono">${fmt(dr - cr)}</dd></dl></div>
+      <div class="pt" data-brk><h1>STATEMENT</h1><dl><dt>Period</dt><dd>${periodText(from, to)}</dd><dt>Printed</dt><dd>${fmtDate(today())}</dd><dt>Closing balance</dt><dd class="mono">${fmt(d.closing)}</dd></dl></div>
       ${custBox(c, "Customer")}
       <table><thead><tr><th>Date</th><th>Ref.</th><th>Details</th><th class="r">Debit</th><th class="r">Credit</th><th class="r">Balance</th></tr></thead><tbody>
-      ${rows.map((r) => `<tr data-brk><td>${fmtDate(r.date)}</td><td class="mono">${esc(r.ref)}</td><td>${esc(r.det)}</td><td class="r mono">${r.dr ? fmt(r.dr) : ""}</td><td class="r mono">${r.cr ? fmt(r.cr) : ""}</td><td class="r mono">${fmt(r.bal)}</td></tr>`).join("") || `<tr><td colspan="6">No transactions.</td></tr>`}
+      ${from ? `<tr data-brk><td>${fmtDate(from)}</td><td></td><td><b>Opening balance</b></td><td></td><td></td><td class="r mono">${fmt(d.opening)}</td></tr>` : ""}
+      ${d.rows.map((r) => `<tr data-brk><td>${fmtDate(r.date)}</td><td class="mono">${esc(r.ref)}</td><td>${esc(r.det)}</td><td class="r mono">${r.dr ? fmt(r.dr) : ""}</td><td class="r mono">${r.cr ? fmt(r.cr) : ""}</td><td class="r mono">${fmt(r.bal)}</td></tr>`).join("") || `<tr><td colspan="6">No transactions in this period.</td></tr>`}
       </tbody></table>
-      <div class="tot" data-brk><span>Total orders</span><span class="r mono">${fmt(dr)}</span><span>Total received</span><span class="r mono">${fmt(cr)}</span><span class="g ${dr - cr > 0 ? "bal" : "ok"}">Balance due (SAR)</span><span class="g r mono ${dr - cr > 0 ? "bal" : "ok"}">${fmt(dr - cr)}</span></div>
-      ${dr - cr > 0 ? pdfBank() : ""}
+      <div class="tot" data-brk>${from ? `<span>Opening balance</span><span class="r mono">${fmt(d.opening)}</span>` : ""}<span>Orders (${d.nOrders})</span><span class="r mono">${fmt(d.dr)}</span><span>Received (${d.nRec})</span><span class="r mono">${fmt(d.cr)}</span><span class="g ${d.closing > 0 ? "bal" : "ok"}">Closing balance (SAR)</span><span class="g r mono ${d.closing > 0 ? "bal" : "ok"}">${fmt(d.closing)}</span></div>
+      ${d.closing > 0 ? pdfBank() : ""}
       ${pdfFooter()}</div>`;
+  }
+  function statementText(c, from, to) {
+    const d = statementData(c, from, to);
+    const out = [`*Statement of account*`, `${c.name}${c.company ? ` (${c.company})` : ""}`, `Period: ${periodText(from, to)}`, ""];
+    if (from) out.push(`Opening balance: ${sar(d.opening)}`);
+    out.push(`Orders (${d.nOrders}): ${sar(d.dr)}`, `Received (${d.nRec}): ${sar(d.cr)}`, `*Closing balance: ${sar(d.closing)}*`);
+    if (d.rows.length) {
+      out.push("", "Details:");
+      d.rows.slice(0, 40).forEach((r) => out.push(`${fmtDate(r.date)} · ${r.ref} · ${r.dr ? "+" + fmt(r.dr) : "−" + fmt(r.cr)}`));
+      if (d.rows.length > 40) out.push(`… and ${d.rows.length - 40} more (see PDF)`);
+    }
+    if (d.closing > 0) bankLines().forEach((x) => out.push("", x));
+    out.push("", "Thank you.");
+    if (sign()) out.push(sign());
+    return out.join("\n");
+  }
+  const stmt = { k: "all", from: "", to: "" };
+  function stmtDlg(c) {
+    if (!c) return closeDlg();
+    const d = statementData(c, stmt.from, stmt.to);
+    dlgCtx = null;
+    openDlg(`Statement · ${c.name}`, `
+      <div class="chips">${[["month", "This month"], ["last", "Last month"], ["year", "This year"], ["all", "All time"]].map(([k, l]) => `<button class="chip ${stmt.k === k ? "on" : ""}" data-act="stmt-period" data-p="${k}" data-id="${c.id}">${l}</button>`).join("")}</div>
+      <div class="grid2"><label class="f"><span>From</span><input id="st-from" type="date" value="${esc(stmt.from)}"></label><label class="f"><span>To</span><input id="st-to" type="date" value="${esc(stmt.to)}"></label></div>
+      <div class="st-sum">${stmt.from ? `<span>Opening balance</span><span class="num">${fmt(d.opening)}</span>` : ""}
+        <span>Orders (${d.nOrders})</span><span class="num">${d.dr ? "+" : ""}${fmt(d.dr)}</span><span>Received (${d.nRec})</span><span class="num">${d.cr ? "−" : ""}${fmt(d.cr)}</span>
+        <span class="g">Closing balance</span><span class="num g" style="color:${d.closing > 0 ? "var(--bad)" : "var(--good)"}">${sar(d.closing)}</span></div>
+      <p class="small muted" style="margin:0">${periodText(stmt.from, stmt.to)} · ${d.rows.length} transaction${d.rows.length === 1 ? "" : "s"}. Completed and paid orders are included.</p>`,
+      `<button class="btn" data-act="open-customer" data-id="${c.id}">Back</button><button class="btn" data-act="stmt-text" data-id="${c.id}">${WA_ICON} Text</button>${PDF_OK ? `<button class="btn primary" data-act="stmt-pdf" data-id="${c.id}">PDF</button>` : ""}`,
+      (b) => { b.onchange = (e) => { if (e.target.id === "st-from" || e.target.id === "st-to") { stmt.k = "custom"; stmt.from = $("#st-from").value; stmt.to = $("#st-to").value; stmtDlg(c); } }; });
   }
   /** Render the document to A5 pages, cutting only between rows/blocks. */
   async function makePdf(html, name) {
@@ -1238,16 +1303,16 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
   let lastPdf = null;
   /** kind: order | dn | receipt | statement */
   async function pdfDlg(kind, o, p) {
-    const base = kind === "receipt" ? p.no || "receipt-" + p.date : kind === "dn" ? `DN-${o.no}` : kind === "statement" ? `Statement-${o.name}` : o.no;
+    const base = kind === "receipt" ? p.no || "receipt-" + p.date : kind === "dn" ? `DN-${o.no}` : kind === "statement" ? `Statement-${o.name}${p && p.from ? "-" + fmtDate(p.from) : ""}` : o.no;
     const name = `${base}.pdf`.replace(/[^\w.؀-ۿ-]+/g, "-");
-    const back = kind === "receipt" ? `data-act="open-receipt" data-id="${o.id}" data-pid="${p.id}"` : kind === "statement" ? `data-act="open-customer" data-id="${o.id}"` : `data-act="open-order" data-id="${o.id}"`;
+    const back = kind === "receipt" ? `data-act="open-receipt" data-id="${o.id}" data-pid="${p.id}"` : kind === "statement" ? `data-act="stmt-open" data-id="${o.id}"` : `data-act="open-order" data-id="${o.id}"`;
     dlgCtx = null; lastPdf = null;
     const canDeliver = kind === "dn" && o.status !== "Delivered" && state.settings.statuses.includes("Delivered");
     openDlg(`PDF · ${base}`, `<div class="pdf-prev" id="pdf-prev"><span class="small muted">Preparing PDF…</span></div><p class="small muted" style="margin:0" id="pdf-info"></p>
       ${canDeliver ? `<button class="btn" data-act="mark-delivered" data-id="${o.id}">${IC.ready} Mark order as Delivered</button>` : ""}`,
       `<button class="btn" ${back}>Back</button>${NATIVE ? "" : `<button class="btn" data-act="pdf-save" disabled>Save PDF</button>`}<button class="btn wa" data-act="pdf-share" disabled>${WA_ICON} Share PDF</button>`);
     try {
-      const html = kind === "receipt" ? receiptDoc(o, p) : kind === "dn" ? deliveryDoc(o) : kind === "statement" ? statementDoc(o) : orderDoc(o);
+      const html = kind === "receipt" ? receiptDoc(o, p) : kind === "dn" ? deliveryDoc(o) : kind === "statement" ? statementDoc(o, p && p.from, p && p.to) : orderDoc(o);
       const r = await makePdf(html, name);
       if (!$("#pdf-prev")) return; // sheet was closed meanwhile
       lastPdf = r;
@@ -1298,11 +1363,42 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
     });
   }
 
+  /* ---------- work board (by department) ---------- */
+  const workStatuses = () => state.settings.statuses.filter((s) => s !== "Delivered" && s !== "Cancelled");
+  function workCard(o) {
+    const td = today(), nx = nextStatus(o);
+    const due = o.dueDate ? (o.dueDate < td ? ["late", `Overdue ${fmtDate(o.dueDate)}`] : o.dueDate === td ? ["today", "Due today"] : ["", fmtDate(o.dueDate)]) : ["", "No date"];
+    return `<div class="wcard">
+      <button class="wcard-h" data-act="open-order" data-id="${o.id}"><span><span class="t"><span class="mono">${esc(o.no)}</span> · ${esc(o.customer.name)}</span><br><span class="s">${esc(o.status)} · ordered ${fmtDate(o.date)}</span></span><span class="due-chip ${due[0]}">${due[1]}</span></button>
+      <ul>${o.lines.map((l) => `<li><span class="q">${qtyFmt(l.qty)} ${esc(l.unit)}</span><span><b>${esc(l.name)}</b>${l.spec ? `<small class="spec">${esc(l.spec)}</small>` : ""}${l.note ? `<small>Note: ${esc(l.note)}</small>` : ""}</span></li>`).join("")}</ul>
+      ${o.notes ? `<div class="wn"><b>Notes:</b> ${esc(o.notes)}</div>` : ""}
+      ${nx ? `<div class="wf"><button class="btn primary" data-act="work-next" data-id="${o.id}">${IC.next.replace("<svg", '<svg style="fill:none;stroke:currentColor;stroke-width:2"')} Move to ${esc(nx)}</button></div>` : ""}
+    </div>`;
+  }
+  views.work = () => {
+    const sts = workStatuses();
+    const open = jobs().filter((o) => sts.includes(o.status));
+    const dept = device.dept === "All" || sts.includes(device.dept) ? device.dept : "All";
+    const byDue = (a, b) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999") || (a.date || "").localeCompare(b.date || "");
+    const chips = [["All", open.length], ...sts.map((s) => [s, open.filter((o) => o.status === s).length])];
+    let body;
+    if (dept === "All") {
+      body = sts.map((s) => { const list = open.filter((o) => o.status === s).sort(byDue); return list.length ? `<div class="grp-h"><h2>${esc(s)}</h2><span class="pill ${tone(s)}">${list.length}</span></div><div class="list">${list.map(workCard).join("")}</div>` : ""; }).join("") || `<div class="empty">No work in progress.</div>`;
+    } else {
+      const list = open.filter((o) => o.status === dept).sort(byDue);
+      body = `<div class="list">${list.map(workCard).join("") || `<div class="empty">Nothing in ${esc(dept)} right now.</div>`}</div>`;
+    }
+    return `<div class="page-head"><div><h1>Work</h1><p>Jobs by department. This phone opens on the one you pick.</p></div></div>
+      <div class="chips">${chips.map(([k, n]) => `<button class="chip ${dept === k ? "on" : ""}" data-act="work-dept" data-d="${esc(k)}">${esc(k)} ${n}</button>`).join("")}</div>
+      ${body}`;
+  };
+
   /* ---------- more ---------- */
   views.more = () => {
     const row = (t, ic, title, sub) => `<button data-tab="${t}"><span class="ic">${ic}</span><span><b>${title}</b><small>${sub}</small></span><span class="chev">›</span></button>`;
     return `<div class="page-head"><div><h1>More</h1></div></div>
       <div class="menu">
+        ${row("receipts", IC.cash, "Receipts", `${allReceipts().length} payments received`)}
         ${row("customers", IC.users, "Customers", `${live(state.customers).length} saved · history, reminders, statements`)}
         ${row("items", IC.box, "Items", `${live(state.items).length} products with prices`)}
         <button data-act="go-quotes"><span class="ic">${IC.quote}</span><span><b>Quotations</b><small>${quotes().filter((o) => o.status === "Quote").length} open</small></span><span class="chev">›</span></button>
@@ -1350,12 +1446,13 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       <div class="acts">
         ${num ? `<button class="btn" data-act="call" data-phone="${esc(c.phone)}">${IC.phone}Call</button><button class="btn wa" data-act="wa-chat" data-phone="${esc(c.phone)}">${WA_ICON}Chat</button>` : ""}
         ${due ? `<button class="btn" data-act="cust-reminder" data-id="${c.id}">${IC.bell}Reminder</button>` : ""}
-        ${PDF_OK ? `<button class="btn" data-act="pdf-statement" data-id="${c.id}">${IC.pdf}Statement</button>` : ""}
+        <button class="btn" data-act="stmt-open" data-id="${c.id}">${IC.pdf}Statement</button>
         <button class="btn" data-act="quote-for" data-id="${c.id}">${IC.quote}Quotation</button>
         <button class="btn" data-act="edit-customer" data-id="${c.id}">${IC.edit}Edit</button>
       </div>
       <h3>Orders</h3>
-      <div class="list">${orders.map(orderRow).join("") || `<div class="empty">No orders yet.</div>`}</div>
+      <div class="list">${orders.filter((o) => !isDone(o)).map(orderRow).join("") || `<div class="empty">No active orders.</div>`}</div>
+      ${orders.some(isDone) ? `<details class="done-list"><summary>Completed (${orders.filter(isDone).length}) ›</summary><div class="list">${orders.filter(isDone).map(orderRow).join("")}</div></details>` : ""}
       <button class="btn sm danger" data-act="del-customer" data-id="${c.id}" style="align-self:flex-start">Delete customer</button>`,
       `<button class="btn primary" data-act="order-for" data-id="${c.id}">＋ New order</button>`);
     dlgCtx = { kind: "customer", id: c.id };
@@ -1731,7 +1828,12 @@ dialog::backdrop { background: rgb(10 12 16 / .5); }
       case "r-period": filters.rperiod = b.dataset.p; return render();
       case "pdf-order": return pdfDlg("order", byId(state.orders, id));
       case "pdf-dn": return pdfDlg("dn", byId(state.orders, id));
-      case "pdf-statement": return pdfDlg("statement", byId(state.customers, id));
+      case "pdf-statement": case "stmt-pdf": return pdfDlg("statement", byId(state.customers, id), { from: stmt.from, to: stmt.to });
+      case "stmt-open": return stmtDlg(byId(state.customers, id));
+      case "stmt-period": { stmt.k = b.dataset.p; const [f, t] = periodRange(stmt.k); stmt.from = f === "" ? "" : f; stmt.to = t === "9999" ? "" : t; return stmtDlg(byId(state.customers, id)); }
+      case "stmt-text": { const c = byId(state.customers, id); return shareText(`Statement · ${c.name}`, statementText(c, stmt.from, stmt.to), c.phone, `data-act="stmt-open" data-id="${c.id}"`); }
+      case "work-dept": device.dept = b.dataset.d; persist(); return render();
+      case "work-next": { const o = byId(state.orders, id), nx = nextStatus(o); if (nx) setStatus(o, nx); return; }
       case "pdf-receipt": { const [o, p] = findPay(id, b.dataset.pid); return pdfDlg("receipt", o, p); }
       case "pdf-share": if (!lastPdf) return; try { await sharePdf(lastPdf); } catch (err) { if (!/cancel|abort/i.test(String(err && (err.message || err)))) toast("Could not share the PDF."); } return;
       case "pdf-save": if (lastPdf) { saveBlob(lastPdf.blob, lastPdf.name); toast(`Saved ${lastPdf.name}`); } return;
