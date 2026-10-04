@@ -17,7 +17,7 @@ Nothing here is production code. Break it, fix it, revert it — that is the poi
 | `TASKS.md` | **Start here.** The exercise checklist |
 | `job-order-sync/` | Google Apps Script that syncs Job Orders between devices through one common Gmail and a Drive folder. See [job-order-sync/README.md](job-order-sync/README.md) |
 | `job-order-android/` | Android app (APK) for Job Order Sender, built by GitHub Actions. See [job-order-android/README.md](job-order-android/README.md) |
-| `job-order-app/` | Job Order Sender: save items and customers, create a job order and send it on WhatsApp. See [job-order-app/README.md](job-order-app/README.md) |
+| `job-order-app/` | Job Order Sender: save items and customers, create a job order and send it on WhatsApp. Installs on a computer from https://shabin26-web.github.io/shabin/job-order-app/ (GitHub Pages). See [job-order-app/README.md](job-order-app/README.md) |
 | `printing-ops/` | PrintOps Ledger: a browser app to track a printing company's jobs, invoices and payments. See [printing-ops/README.md](printing-ops/README.md) |
 | `CONTRIBUTING.md` | The workflow, step by step, with the exact commands |
 

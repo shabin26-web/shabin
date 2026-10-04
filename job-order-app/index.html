@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a5fb4">
 <title>Job Orders</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
@@ -106,6 +109,40 @@ a { color: var(--accent); }
 .nav .plus svg { width: 26px; height: 26px; stroke-width: 2.4; }
 .nav button.new-btn { gap: 2px; }
 .nav button.new-btn.on { color: var(--accent); }
+.nav .wide-only, .nav .new-label { display: none; }
+
+/* ---------- computer: side bar, wider content, details in a panel on the right ---------- */
+@media (min-width: 1000px) {
+  :root { --side: 216px; --panel: 500px; }
+  .appbar { padding-left: calc(var(--side) + 24px); padding-right: 24px; }
+  .appbar-in, .wrap { max-width: 860px; margin: 0; }
+  .wrap { margin-left: var(--side); padding-inline: 24px; padding-bottom: 48px; }
+  body.has-panel .appbar, body.has-panel .wrap { margin-right: var(--panel); }
+  body.has-panel .appbar-in, body.has-panel .wrap { max-width: none; }
+  .nav { top: 0; right: auto; width: var(--side); padding: 18px 10px; box-shadow: none; border-right: 1px solid var(--line); overflow: auto; }
+  .nav-in { display: flex; flex-direction: column; gap: 2px; height: auto; max-width: none; align-items: stretch; }
+  .nav button { flex-direction: row; justify-content: flex-start; gap: 12px; height: 42px; padding: 0 12px; border-radius: 10px; font-size: 14px; color: var(--ink-2); }
+  .nav button:hover { background: var(--card-2); }
+  .nav button.on { background: var(--accent-soft); }
+  .nav svg { width: 20px; height: 20px; }
+  .nav .phone-only { display: none; }
+  .nav .wide-only { display: flex; }
+  .nav button.new-btn { order: -1; height: 46px; margin-bottom: 10px; background: var(--accent); color: var(--accent-ink); font-weight: 600; justify-content: center; }
+  .nav button.new-btn:hover { background: var(--accent); filter: brightness(1.08); }
+  .nav button.new-btn.on { color: var(--accent-ink); }
+  .nav .plus { width: auto; height: auto; margin: 0; background: none; box-shadow: none; color: inherit; }
+  .nav .plus svg { width: 20px; height: 20px; }
+  .nav .new-label { display: inline; }
+  .back[data-tab="more"] { display: none; }
+  body:not(.has-panel) .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  body .toast { left: calc(50% + var(--side) / 2); bottom: 24px; }
+  dialog.panel { position: fixed; inset: 0 0 0 auto; width: var(--panel); height: 100dvh; max-height: none; margin: 0; border-radius: 0; z-index: 50; box-shadow: -2px 0 18px rgb(20 24 32 / .12); border-left: 1px solid var(--line); }
+  dialog.panel .grip { display: none; }
+  dialog.panel .dlg { height: 100%; }
+  dialog.panel .dlg-head { padding-top: 16px; }
+  dialog.panel .dlg-body { flex: 1; }
+  dialog.panel .dlg-foot { padding-bottom: 16px; }
+}
 
 /* ---------- controls ---------- */
 .btn { font: 600 14px/1 var(--f-body); border: 0; background: var(--card-2); color: var(--ink); padding: 12px 16px; border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; min-height: 46px; }
@@ -354,9 +391,15 @@ details.done-list[open] > summary { margin-bottom: 8px; }
 <nav class="nav" aria-label="Sections"><div class="nav-in">
   <button data-tab="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>Home</button>
   <button data-tab="orders"><svg viewBox="0 0 24 24"><path d="M7 3h10l2 3v15H5V6z"/><path d="M9 10h6M9 14h6M9 18h3"/></svg>Orders</button>
-  <button data-tab="new" class="new-btn" aria-label="New order"><span class="plus"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></button>
+  <button data-tab="new" class="new-btn" aria-label="New order"><span class="plus"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span class="new-label">New order</span></button>
   <button data-tab="receipts"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Receipts</button>
-  <button data-tab="more"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</button>
+  <button data-tab="more" class="phone-only"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</button>
+  <button data-tab="work" class="wide-only"><svg viewBox="0 0 24 24"><path d="M4 20V8M10 20V4M16 20V12M22 20H2"/></svg>Work board</button>
+  <button data-act="go-quotes" data-nav="quotes" class="wide-only"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg>Quotations</button>
+  <button data-tab="customers" class="wide-only"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c.6-3.4 3-5.4 6-5.4s5.4 2 6 5.4"/><path d="M16 4.6a3 3 0 0 1 0 6M18 14.8c1.7.7 2.7 2.3 3 5.2"/></svg>Customers</button>
+  <button data-tab="items" class="wide-only"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/></svg>Items</button>
+  <button data-tab="reports" class="wide-only"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Reports</button>
+  <button data-tab="settings" class="wide-only"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Settings</button>
 </div></nav>
 
 <dialog id="dlg"><div class="dlg">
@@ -599,6 +642,8 @@ details.done-list[open] > summary { margin-bottom: 8px; }
   const nextReceipt = (peek) => nextSeq("rseries", "rnext", receiptNos(), peek);
 
   /* ---------- theme & status bar ---------- */
+  let installEvt = null; // Chrome/Edge "install app" offer, kept for the button in Settings
+  const WIDE = window.matchMedia ? window.matchMedia("(min-width: 1000px)") : { matches: false };
   const darkMq = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
   function isDark() { return device.theme === "dark" || (device.theme === "auto" && darkMq && darkMq.matches); }
   function applyTheme() {
@@ -621,11 +666,18 @@ details.done-list[open] > summary { margin-bottom: 8px; }
     const b = $("#dlg-body"); b.oninput = b.onclick = b.onchange = null; b.innerHTML = body; b.scrollTop = 0;
     $("#dlg-foot").innerHTML = foot || "";
     $("#dlg-foot").hidden = !foot;
-    if (!dlg.open) dlg.showModal();
+    if (!dlg.open) {
+      // On a computer the sheet opens as a panel on the right, so the list stays usable beside it.
+      const panel = WIDE.matches;
+      dlg.classList.toggle("panel", panel);
+      document.body.classList.toggle("has-panel", panel);
+      if (panel) dlg.show(); else dlg.showModal();
+    }
     if (after) after(b);
   }
   function closeDlg() { if (dlg.open) dlg.close(); dlgCtx = null; }
-  dlg.addEventListener("close", () => { dlgCtx = null; });
+  dlg.addEventListener("close", () => { dlgCtx = null; document.body.classList.remove("has-panel"); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && dlg.open && dlg.classList.contains("panel")) closeDlg(); });
   dlg.addEventListener("click", (e) => { if (e.target.closest("[data-close]") || e.target === dlg) closeDlg(); });
   let confirmYes = null;
   function confirmBox(title, text, label, yes) {
@@ -663,12 +715,15 @@ details.done-list[open] > summary { margin-bottom: 8px; }
     if (t !== tab) stEdit = null;
     tab = t;
     try { localStorage.setItem(KEY + ".tab", t); } catch (e) {}
-    const navKey = NAV_OF[t] || t;
-    $$(".nav button").forEach((b) => b.classList.toggle("on", b.dataset.tab === navKey));
     render();
     window.scrollTo(0, 0);
   }
-  function render() { banner(); $("#view").innerHTML = views[tab](); if (tab === "new") bindEditor(); }
+  function render() { banner(); markNav(); $("#view").innerHTML = views[tab](); if (tab === "new") bindEditor(); }
+  // Phone: More stays lit for its pages. Computer: the side bar lists every page, Quotations too.
+  function markNav() {
+    const key = !WIDE.matches ? NAV_OF[tab] || tab : tab === "orders" && filters.view === "quotes" ? "quotes" : tab;
+    $$(".nav button").forEach((b) => b.classList.toggle("on", (b.dataset.nav || b.dataset.tab) === key));
+  }
   const backTo = (label = "More") => `<button class="back" data-tab="more">‹ ${label}</button>`;
 
   /* ---------- home ---------- */
@@ -1610,6 +1665,12 @@ details.done-list[open] > summary { margin-bottom: 8px; }
         <div class="btn-row"><button class="btn" data-act="st-add">+ Add status</button><button class="btn primary" data-act="st-save">Save statuses</button></div>
       </section>
 
+      ${installEvt ? `<section class="card section">
+        <h2>Install on this computer</h2>
+        <p class="small muted" style="margin:0">Opens Job Orders in its own window with a desktop icon, and works without internet. Use a series like JO-C for this computer.</p>
+        <button class="btn primary" data-act="install-app">Install Job Orders</button>
+      </section>` : ""}
+
       <section class="card section">
         <h2>This device</h2>
         <div class="f"><span class="lbl">Appearance</span><div class="seg">${[["auto", "Auto"], ["light", "Light"], ["dark", "Dark"]].map(([k, l]) => `<button type="button" data-act="theme" data-theme-set="${k}" class="${device.theme === k ? "on" : ""}">${l}</button>`).join("")}</div></div>
@@ -1952,6 +2013,13 @@ details.done-list[open] > summary { margin-bottom: 8px; }
         stEdit = null; save(); render(); return toast("Statuses saved");
       }
       case "theme": device.theme = b.dataset.themeSet; applyTheme(); persist(); return render();
+      case "install-app": {
+        if (!installEvt) return;
+        const ev = installEvt; installEvt = null;
+        ev.prompt();
+        ev.userChoice.then(() => { if (tab === "settings") render(); }).catch(() => {});
+        return;
+      }
       case "save-device": {
         const up = (sel) => $(sel).value.trim().toUpperCase().replace(/-+$/, "");
         const series = up("#d-series"), next = parseInt($("#d-next").value, 10);
@@ -2055,6 +2123,18 @@ details.done-list[open] > summary { margin-bottom: 8px; }
 
   go(PAGES.includes(tab) ? tab : "home");
   if (device.sync.url) syncNow(false);
+
+  /* ---------- computer: install, offline, wide layout ---------- */
+  if (WIDE.addEventListener) WIDE.addEventListener("change", () => { if (dlg.classList.contains("panel") || !WIDE.matches) closeDlg(); markNav(); });
+  if (!NATIVE && /^https?:$/.test(location.protocol) && "serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    installEvt = e;
+    if (tab === "settings") render();
+  });
+  window.addEventListener("appinstalled", () => { installEvt = null; toast("Job Orders installed. Open it from the desktop or Start menu."); if (tab === "settings") render(); });
 })();
 </script>
 </body>

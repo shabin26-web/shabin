@@ -62,7 +62,28 @@ Dates show as `01-Oct-26`. Money is calculated in halalas and rounded per line.
 
 - **Android app:** https://github.com/shabin26-web/shabin/releases/download/job-orders-latest/job-orders.apk
   (see [job-order-android/README.md](../job-order-android/README.md)).
-- **Computer:** double-click `job-order-app/index.html`.
+- **Computer (installed, recommended):** see *Use on a computer* below.
+- **Computer (quick look):** double-click `job-order-app/index.html` (no install, no offline copy).
+
+## Use on a computer
+
+The same app runs in Chrome or Edge on Windows or Mac. Installed, it opens in its own window with
+a desktop / Start-menu icon and keeps working without internet.
+
+1. **Once, by the GitHub account owner:** on github.com open the repository → **Settings** →
+   **Pages** → *Build and deployment* → Source **Deploy from a branch** → Branch
+   `claude/printing-ops-website-aw6cpu`, folder `/ (root)` → **Save**. After a minute the app is at
+   **https://shabin26-web.github.io/shabin/job-order-app/**
+2. On the computer open that link in **Chrome** or **Edge**.
+3. Click the **Install** icon at the right end of the address bar (or **Settings → Install
+   Job Orders** inside the app). It now has a desktop icon.
+4. In the app: **Settings → This device** → series `JO-C`, `RCT-C`, `QT-C` → **Save device settings**.
+5. **Settings → Sync between devices** → paste the **same sync link and team PIN** as the phones
+   → **Connect**. The computer and every phone now share the same orders, receipts and customers.
+
+On a wide screen the menu is on the left and an order, receipt or customer opens in a panel on
+the right, next to the list. Press **Esc** or **×** to close the panel.
+Updates arrive by themselves: the next time the app opens online it loads the newest version.
 
 ## Several devices
 
