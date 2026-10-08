@@ -1,7 +1,9 @@
 package sms2mm.core
 
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.LocalDateTime
+import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoUnit
 
 /**
@@ -27,34 +29,28 @@ class SmsProcessor(private val rules: RuleSet) {
                 sender = sender.trim(),
                 type = pattern.type,
                 amount = amount,
-                currency = match.group("currency")?.uppercase() ?: pattern.defaultCurrency,
+                currency = match.group("currency")?.let(::normalizeCurrency) ?: pattern.defaultCurrency,
                 merchant = match.group("merchant")?.let(::cleanMerchant)?.ifEmpty { null },
                 cardLast4 = match.group("card")?.takeLast(4),
-                receivedAt = receivedAt.truncatedTo(ChronoUnit.MINUTES),
+                occurredAt = (parseDate(match.group("date"), pattern) ?: receivedAt).truncatedTo(ChronoUnit.MINUTES),
             )
+            val keyword = txn.merchant?.let { m -> rules.keywords.firstOrNull { m.contains(it.keyword, ignoreCase = true) } }
             return SmsOutcome.Parsed(
                 txn = txn,
-                category = categorize(txn.merchant, pattern),
+                category = keyword?.category ?: pattern.defaultCategory ?: Category.UNCATEGORIZED,
                 account = txn.cardLast4?.let { rules.accountsByCard[it] } ?: bank.defaultAccount,
+                note = keyword?.note ?: txn.merchant,
                 dedupKey = dedupKey(txn),
             )
         }
         return SmsOutcome.Unparsed(bank.bank, receivedAt)
     }
 
-    private fun categorize(merchant: String?, pattern: MessagePattern): Category {
-        if (merchant != null) {
-            rules.keywords.firstOrNull { merchant.contains(it.keyword, ignoreCase = true) }
-                ?.let { return it.category }
-        }
-        return pattern.defaultCategory ?: Category.UNCATEGORIZED
-    }
-
     companion object {
         /** Same bank, minute, amount and card → same transaction (guards against re-delivered SMS). */
         fun dedupKey(txn: ParsedTxn): String = listOf(
             txn.sender.lowercase(),
-            txn.receivedAt.truncatedTo(ChronoUnit.MINUTES).toString(),
+            txn.occurredAt.truncatedTo(ChronoUnit.MINUTES).toString(),
             txn.amount.stripTrailingZeros().toPlainString(),
             txn.cardLast4.orEmpty(),
         ).joinToString("|")
@@ -62,7 +58,18 @@ class SmsProcessor(private val rules: RuleSet) {
         internal fun parseAmount(raw: String?): BigDecimal? {
             val cleaned = raw?.replace(",", "")?.trim().orEmpty()
             val amount = cleaned.toBigDecimalOrNull() ?: return null
-            return if (amount.signum() > 0) amount.setScale(2, java.math.RoundingMode.HALF_UP) else null
+            return if (amount.signum() > 0) amount.setScale(2, RoundingMode.HALF_UP) else null
+        }
+
+        private fun parseDate(raw: String?, pattern: MessagePattern): LocalDateTime? {
+            val format = pattern.dateFormat ?: return null
+            val cleaned = raw?.trim()?.replace(Regex("""\s+"""), " ") ?: return null
+            return try { LocalDateTime.parse(cleaned, format) } catch (_: DateTimeParseException) { null }
+        }
+
+        private fun normalizeCurrency(raw: String): String = when (raw.trim().uppercase()) {
+            "SR", "SAR", "ر.س", "ريال", "ريال سعودي" -> "SAR"
+            else -> raw.trim().uppercase()
         }
 
         private fun cleanMerchant(raw: String): String = raw.trim().trimEnd('.', ',', ';').replace(Regex("""\s+"""), " ")

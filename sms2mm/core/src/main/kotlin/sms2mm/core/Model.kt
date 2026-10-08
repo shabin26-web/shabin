@@ -26,7 +26,8 @@ data class ParsedTxn(
     val currency: String,
     val merchant: String?,
     val cardLast4: String?,
-    val receivedAt: LocalDateTime,
+    /** Transaction time: from the SMS text when the bank prints it, else when the SMS arrived. */
+    val occurredAt: LocalDateTime,
 )
 
 /** What happened to one incoming SMS. None of these carry the message body. */
@@ -47,6 +48,8 @@ sealed interface SmsOutcome {
         val txn: ParsedTxn,
         val category: Category,
         val account: String,
+        /** Money Manager "Note" field: the keyword rule's note, else the merchant. */
+        val note: String?,
         val dedupKey: String,
     ) : SmsOutcome
 }

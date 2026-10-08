@@ -1,20 +1,25 @@
 package sms2mm.core
 
+import java.time.format.DateTimeFormatter
+
 /**
  * One message layout a bank uses, e.g. "card purchase" or "salary credit".
  *
  * [regex] is matched against the SMS after [Digits.normalize], and may use these
  * named groups (only `amount` is required):
  *   amount   — 1,234.50
- *   currency — SAR / USD; defaults to [defaultCurrency]
+ *   currency — SAR / SR / ريال / USD; defaults to [defaultCurrency]
  *   merchant — where the money went / came from
  *   card     — last 4 digits of the card or account
+ *   date     — transaction time printed in the SMS, read with [dateFormat];
+ *              when absent or unreadable the SMS received time is used
  */
 data class MessagePattern(
     val type: TxnType,
     val regex: Regex,
     val defaultCategory: Category? = null,
     val defaultCurrency: String = "SAR",
+    val dateFormat: DateTimeFormatter? = null,
 )
 
 data class BankRule(
@@ -30,8 +35,11 @@ data class BankRule(
     fun sentBy(sender: String): Boolean = senders.any { it.equals(sender.trim(), ignoreCase = true) }
 }
 
-/** Keyword (matched case-insensitively inside the merchant name) → category. */
-data class KeywordRule(val keyword: String, val category: Category)
+/**
+ * Keyword (matched case-insensitively inside the merchant name) → category, plus the
+ * Note to write in Money Manager (e.g. merchant "LULU H" → note "Lulu").
+ */
+data class KeywordRule(val keyword: String, val category: Category, val note: String? = null)
 
 data class RuleSet(
     val banks: List<BankRule>,

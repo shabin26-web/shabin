@@ -62,7 +62,7 @@ class SmsProcessorTest {
         assertEquals("4821", out.txn.cardLast4)
         assertEquals(Category("Food", "Groceries"), out.category)
         assertEquals("Example Credit Card", out.account)
-        assertEquals(LocalDateTime.of(2026, 10, 8, 14, 22), out.txn.receivedAt)
+        assertEquals(LocalDateTime.of(2026, 10, 8, 14, 22), out.txn.occurredAt)
     }
 
     @Test
