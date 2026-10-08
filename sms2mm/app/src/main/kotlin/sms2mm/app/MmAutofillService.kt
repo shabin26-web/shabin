@@ -90,6 +90,11 @@ class MmAutofillService : AccessibilityService() {
         val root = rootInActiveWindow
         if (root != null && Store.recordLayout(this) && step == Step.TAB) recordLayout(root)
 
+        if (root != null && closeStrayWindow(root)) {
+            handler.postDelayed(::tick, 500)
+            return
+        }
+
         val result = if (root == null) Result.Retry else try {
             run(step, j, root)
         } catch (e: Exception) {
@@ -162,11 +167,16 @@ class MmAutofillService : AccessibilityService() {
 
             Step.AMOUNT -> when (j.phase) {
                 0 -> { clickField(root, "Amount") ?: return Result.Retry; j.phase = 1; Result.Retry }
-                else -> {
+                1 -> {
                     val field = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.takeIf { it.isEditable }
                     if (field != null && setText(field, t.amount)) Result.Done
-                    else if (typeOnKeypad(root, t.amount)) Result.Done
+                    else if (typeOnKeypad(root, t.amount, t.currency)) { j.phase = 2; Result.Retry }
                     else Result.Retry
+                }
+                else -> {
+                    // Close Money Manager's number pad with its "Done" key.
+                    keypadKey(root, "Done")?.let(::click)
+                    Result.Done
                 }
             }
 
@@ -251,12 +261,14 @@ class MmAutofillService : AccessibilityService() {
 
     /** Tap the row/field next to a label such as "Account". */
     private fun clickField(root: AccessibilityNodeInfo, label: String): Unit? {
-        val node = findAll(root) { norm(it.text) == norm(label) && norm(label) in fieldLabels }.firstOrNull() ?: return null
+        // Topmost match: the number pad and pickers repeat labels ("Amount") in their own headers,
+        // next to buttons such as the currency-conversion globe.
+        val node = findAll(root) { norm(it.text) == norm(label) && norm(label) in fieldLabels }.minByOrNull { bounds(it).top } ?: return null
         val labelBox = bounds(node)
         // Prefer the value area on the same row, right of the label.
         val rowTarget = findAll(root) { n ->
             val b = bounds(n)
-            n !== node && (n.isClickable || n.isEditable) && b.left >= labelBox.right - 4 &&
+            n !== node && (n.isClickable || n.isEditable) && !isForbidden(n) && b.left >= labelBox.right - 4 &&
                 b.centerY() in labelBox.top..labelBox.bottom
         }.minByOrNull { bounds(it).left }
         click(rowTarget ?: node)
@@ -266,6 +278,7 @@ class MmAutofillService : AccessibilityService() {
     private fun bounds(n: AccessibilityNodeInfo) = Rect().also { n.getBoundsInScreen(it) }
 
     private fun click(node: AccessibilityNodeInfo) {
+        if (isForbidden(node)) return
         var n: AccessibilityNodeInfo? = node
         while (n != null) {
             if (n.isClickable && n.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return
@@ -285,12 +298,44 @@ class MmAutofillService : AccessibilityService() {
         return node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
     }
 
-    /** Money Manager may show its own number pad instead of the keyboard: press its keys. */
-    private fun typeOnKeypad(root: AccessibilityNodeInfo, amount: String): Boolean {
-        val keys = amount.trimEnd('0').trimEnd('.').ifEmpty { "0" }
-        val nodes = keys.map { c -> findAll(root) { norm(it.text) == c.toString() || it.text?.toString() == c.toString() }.maxByOrNull { bounds(it).top } ?: return false }
+    /** Money Manager shows its own number pad (screenshot: currency row ر.س / ₹, digits, 00, ".", Done). */
+    private fun typeOnKeypad(root: AccessibilityNodeInfo, amount: String, currency: String): Boolean {
+        val digits = keypadKey(root, "1") ?: return false
+        // Choose the currency first, so a SAR amount is not entered as INR (or the reverse).
+        val symbols = when (currency) {
+            "SAR" -> listOf("ر.س", "SAR", "SR")
+            "INR" -> listOf("₹", "INR", "Rs")
+            else -> listOf(currency)
+        }
+        findAll(root) { n -> symbols.any { n.text?.toString()?.trim() == it } && bounds(n).bottom <= bounds(digits).top + 4 }
+            .maxByOrNull { bounds(it).top }?.let(::click)
+        val keys = java.math.BigDecimal(amount).stripTrailingZeros().toPlainString()
+        val nodes = keys.map { c -> keypadKey(root, c.toString()) ?: return false }
         nodes.forEach(::click)
         return true
+    }
+
+    /** A number-pad key by its exact label, the lowest one on screen (the pad sits at the bottom). */
+    private fun keypadKey(root: AccessibilityNodeInfo, label: String): AccessibilityNodeInfo? =
+        findAll(root) { it.text?.toString()?.trim() == label && !isForbidden(it) }.maxByOrNull { bounds(it).top }
+
+    /** Buttons the auto-fill must never press: currency conversion, calculator, fees, camera, favourites. */
+    private fun isForbidden(n: AccessibilityNodeInfo): Boolean {
+        // Only the button's id/description: visible text like "Coffee" must not match "fee".
+        if (n.text?.toString()?.trim().equals("Fees", ignoreCase = true)) return true
+        val what = listOf(n.contentDescription, n.viewIdResourceName).joinToString(" ") { it?.toString().orEmpty() }.lowercase()
+        return listOf("globe", "currency", "exchange", "convert", "calc", "fee", "camera", "photo", "bookmark", "favorite", "favourite")
+            .any { it in what }
+    }
+
+    /** If a currency-conversion (or similar) window opened by mistake, press Back once. */
+    private fun closeStrayWindow(root: AccessibilityNodeInfo): Boolean {
+        val stray = findAll(root) { n ->
+            val tx = n.text?.toString().orEmpty().lowercase()
+            "exchange rate" in tx || "conversion" in tx || "convert currency" in tx || "currency setting" in tx
+        }.isNotEmpty()
+        if (stray) performGlobalAction(GLOBAL_ACTION_BACK)
+        return stray
     }
 
     private fun scroll(root: AccessibilityNodeInfo, then: Result): Result {
