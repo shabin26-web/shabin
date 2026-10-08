@@ -20,14 +20,30 @@ and on **Add** opens Money Manager and fills the entry in. You check it and tap 
 - **Your data is not in this repo.** Card numbers, account mapping and keywords live in a
   rules file on the phone (Setup → Import / Export rules).
 
-## Install
+## Install (Samsung / Android phone)
 
-1. GitHub → **Actions** → **sms2mm** → latest green run → download `sms2mm-debug-apk`.
-2. Unzip and open the `.apk` on the phone. Allow "install unknown apps" for your file manager.
-   (Google Play doesn't allow SMS-reading apps like this, so it is installed directly.)
-3. Open **Setup**: allow SMS and notifications, open Accessibility settings and turn on
-   **SMS → Money Manager auto-fill**, then **Import rules** (your `sms2mm-rules.json`).
-4. Open **Banks** → **Scan inbox for bank senders** → tap `+` on each sender it finds → **Save**.
+1. **Download**: on the phone, open
+   <https://github.com/shabin26-web/shabin/releases/tag/sms2mm-latest> and tap **sms2mm.apk**.
+   No GitHub login is needed.
+2. **Samsung Auto Blocker**: Settings → Security and privacy → **Auto Blocker → Off**. Turn it back on
+   after step 5.
+3. **Install**: open `sms2mm.apk` from Downloads. If asked, allow installing from this source.
+   If Play Protect warns, tap **More details → Install anyway**. It warns because the app reads
+   SMS and isn't from the Play Store, which doesn't allow SMS-reading apps like this.
+4. Save your `sms2mm-rules.json` into Downloads.
+5. **Restricted settings**: open the app once, then go to Settings → Apps → **SMS → Money Manager** →
+   ⋮ (top right) → **Allow restricted settings**. Android needs this before it lets an app installed
+   this way use SMS or Accessibility.
+6. **In the app**:
+   - **Setup**: Allow SMS + notifications → Open Accessibility settings → Installed apps →
+     **SMS → Money Manager auto-fill → On** → **Import rules**.
+   - **Banks**: **Scan inbox for bank senders** → `+` each sender → **Save**.
+7. **Check**: Settings → Apps → SMS → Money Manager → Permissions shows no internet access.
+
+**Updating:** before installing a newer build, **Setup → Export rules** first. Each CI build is signed
+with a temporary key, so Android may refuse to install it over the old version ("App not installed").
+If that happens, uninstall the old version, install the new one, and **Import rules** again.
+The Pending list starts empty after a reinstall.
 
 ## Using it
 

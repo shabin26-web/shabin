@@ -12,6 +12,8 @@ jobs:
   build:
     name: Core tests + APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # publish the APK to the sms2mm-latest pre-release
     defaults:
       run:
         working-directory: sms2mm
@@ -48,3 +50,23 @@ jobs:
           name: sms2mm-debug-apk
           path: sms2mm/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      # Direct phone download, no GitHub login or zip:
+      # https://github.com/<owner>/<repo>/releases/tag/sms2mm-latest
+      - name: Rename APK
+        if: github.event_name == 'push'
+        run: cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/sms2mm.apk
+
+      - name: Publish to the sms2mm-latest pre-release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: sms2mm-latest
+          name: SMS → Money Manager (latest build)
+          prerelease: true
+          target_commitish: ${{ github.sha }}
+          overwrite_files: true
+          files: sms2mm/app/build/outputs/apk/debug/sms2mm.apk
+          body: |
+            Latest build of the SMS → Money Manager app from commit ${{ github.sha }}.
+            Download **sms2mm.apk** on your phone and open it. Install steps: sms2mm/README.md.
