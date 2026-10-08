@@ -3,14 +3,14 @@ name: sms2mm
 # Bank SMS → Money Manager app. Only runs when files under sms2mm/ change.
 on:
   push:
-    branches: [main]
     paths: ["sms2mm/**", ".github/workflows/sms2mm.yml"]
   pull_request:
     paths: ["sms2mm/**", ".github/workflows/sms2mm.yml"]
+  workflow_dispatch:
 
 jobs:
-  core-tests:
-    name: Core tests (parser, OTP filter)
+  build:
+    name: Core tests + APK
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -26,5 +26,25 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Run core tests
-        run: ./gradlew :core:test --console=plain
+      - name: Core tests (parser, OTP filter, keyword rules)
+        run: ./gradlew -p core test --console=plain
+
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug --console=plain
+
+      - name: "Security check: no INTERNET permission in the merged manifest"
+        run: |
+          manifests=$(find app/build/intermediates -name AndroidManifest.xml -path '*merged*' -path '*debug*')
+          test -n "$manifests" || { echo "merged manifest not found"; exit 1; }
+          echo "$manifests"
+          grep -l 'android.permission.RECEIVE_SMS' $manifests > /dev/null || { echo "RECEIVE_SMS missing – wrong file?"; exit 1; }
+          if grep -n 'android.permission.INTERNET' $manifests; then
+            echo "::error::INTERNET permission found in the merged manifest"; exit 1
+          fi
+          echo "OK: no INTERNET permission"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sms2mm-debug-apk
+          path: sms2mm/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SMS → Money Manager</string>
+    <string name="a11y_label">SMS → Money Manager auto-fill</string>
+    <string name="a11y_description">Fills a transaction into Money Manager after you tap Add on a bank SMS notification. It can only see and act inside Money Manager, and it never presses Save for you.</string>
+</resources>

@@ -2,6 +2,7 @@ rootProject.name = "sms2mm"
 
 pluginManagement {
     repositories {
+        google()
         gradlePluginPortal()
         mavenCentral()
     }
@@ -9,10 +10,14 @@ pluginManagement {
 
 dependencyResolutionManagement {
     repositories {
+        google()
         mavenCentral()
     }
 }
 
-// `core` is plain Kotlin/JVM (parsing, OTP filter, categories) and builds anywhere.
-// The Android `app` module is added in a later step.
-include(":core")
+// Plain-Kotlin parsing library (OTP filter, bank layouts, keyword rules).
+// A separate build so `./gradlew -p core test` works without the Android SDK.
+includeBuild("core")
+
+// The Android app.
+include(":app")
