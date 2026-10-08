@@ -1,0 +1,30 @@
+name: sms2mm
+
+# Bank SMS → Money Manager app. Only runs when files under sms2mm/ change.
+on:
+  push:
+    branches: [main]
+    paths: ["sms2mm/**", ".github/workflows/sms2mm.yml"]
+  pull_request:
+    paths: ["sms2mm/**", ".github/workflows/sms2mm.yml"]
+
+jobs:
+  core-tests:
+    name: Core tests (parser, OTP filter)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sms2mm
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Run core tests
+        run: ./gradlew :core:test --console=plain
