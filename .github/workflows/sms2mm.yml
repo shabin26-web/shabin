@@ -37,8 +37,8 @@ jobs:
           manifests=$(find app/build/intermediates -name AndroidManifest.xml -path '*merged*' -path '*debug*')
           test -n "$manifests" || { echo "merged manifest not found"; exit 1; }
           echo "$manifests"
-          grep -l 'android.permission.RECEIVE_SMS' $manifests > /dev/null || { echo "RECEIVE_SMS missing – wrong file?"; exit 1; }
-          if grep -n 'android.permission.INTERNET' $manifests; then
+          grep -lE '<uses-permission[^>]*android.permission.RECEIVE_SMS' $manifests > /dev/null || { echo "RECEIVE_SMS missing – wrong file?"; exit 1; }
+          if grep -nE '<uses-permission[^>]*android.permission.INTERNET' $manifests; then
             echo "::error::INTERNET permission found in the merged manifest"; exit 1
           fi
           echo "OK: no INTERNET permission"
