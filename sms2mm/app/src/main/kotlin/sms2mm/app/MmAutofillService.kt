@@ -187,7 +187,8 @@ class MmAutofillService : AccessibilityService() {
     }
 
     /** Opens an account picker field and chooses [account], first tapping its group (e.g. "Accounts") if needed. */
-    private fun pick(j: Job, root: AccessibilityNodeInfo, labels: List<String>, account: String, group: String?): Result = when (j.phase) {
+    private fun pick(j: Job, root: AccessibilityNodeInfo, labels: List<String>, account: String, group: String?): Result {
+        return when (j.phase) {
         0 -> {
             // The account panel may already be open (it is in the user's screenshot).
             if (byText(root, account, exceptLabels = true) != null) { j.phase = 2; Result.Retry }
@@ -204,6 +205,7 @@ class MmAutofillService : AccessibilityService() {
             val node = byText(root, account, exceptLabels = true) ?: return scroll(root, Result.Retry)
             click(node)
             Result.Done
+        }
         }
     }
 

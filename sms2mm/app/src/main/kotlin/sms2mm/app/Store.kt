@@ -102,10 +102,12 @@ object Store {
 
     // ---------------------------------------------------------------- rules
 
-    fun rules(ctx: Context): UserRules = synchronized(lock) {
-        val f = file(ctx, "rules.json")
-        if (!f.exists()) return UserRules()
-        try { UserRules.fromJson(f.readText()) } catch (_: Exception) { UserRules() }
+    fun rules(ctx: Context): UserRules {
+        return synchronized(lock) {
+            val f = file(ctx, "rules.json")
+            if (!f.exists()) return UserRules()
+            try { UserRules.fromJson(f.readText()) } catch (_: Exception) { UserRules() }
+        }
     }
 
     fun saveRules(ctx: Context, rules: UserRules) = synchronized(lock) { write(ctx, "rules.json", rules.toJson()) }
@@ -116,10 +118,12 @@ object Store {
 
     private val txnList = ListSerializer(PendingTxn.serializer())
 
-    fun txns(ctx: Context): List<PendingTxn> = synchronized(lock) {
-        val f = file(ctx, "txns.json")
-        if (!f.exists()) return emptyList()
-        try { json.decodeFromString(txnList, f.readText()) } catch (_: Exception) { emptyList() }
+    fun txns(ctx: Context): List<PendingTxn> {
+        return synchronized(lock) {
+            val f = file(ctx, "txns.json")
+            if (!f.exists()) return emptyList()
+            try { json.decodeFromString(txnList, f.readText()) } catch (_: Exception) { emptyList() }
+        }
     }
 
     fun txn(ctx: Context, id: String): PendingTxn? = txns(ctx).firstOrNull { it.id == id }
@@ -127,11 +131,13 @@ object Store {
     private fun saveTxns(ctx: Context, list: List<PendingTxn>) = write(ctx, "txns.json", json.encodeToString(txnList, list))
 
     /** Adds a new transaction; false when the same SMS was already captured. */
-    fun insert(ctx: Context, txn: PendingTxn): Boolean = synchronized(lock) {
-        val list = txns(ctx)
-        if (list.any { it.id == txn.id }) return false
-        saveTxns(ctx, listOf(txn) + list)
-        true
+    fun insert(ctx: Context, txn: PendingTxn): Boolean {
+        return synchronized(lock) {
+            val list = txns(ctx)
+            if (list.any { it.id == txn.id }) return false
+            saveTxns(ctx, listOf(txn) + list)
+            true
+        }
     }
 
     fun update(ctx: Context, id: String, change: (PendingTxn) -> PendingTxn) = synchronized(lock) {
@@ -144,10 +150,12 @@ object Store {
 
     private val skipList = ListSerializer(SkipEvent.serializer())
 
-    fun skips(ctx: Context): List<SkipEvent> = synchronized(lock) {
-        val f = file(ctx, "skips.json")
-        if (!f.exists()) return emptyList()
-        try { json.decodeFromString(skipList, f.readText()) } catch (_: Exception) { emptyList() }
+    fun skips(ctx: Context): List<SkipEvent> {
+        return synchronized(lock) {
+            val f = file(ctx, "skips.json")
+            if (!f.exists()) return emptyList()
+            try { json.decodeFromString(skipList, f.readText()) } catch (_: Exception) { emptyList() }
+        }
     }
 
     fun addSkip(ctx: Context, event: SkipEvent) = synchronized(lock) {
