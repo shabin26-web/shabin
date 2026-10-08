@@ -13,8 +13,8 @@ class KnownBanksTest {
         RuleSet(
             banks = listOf(KnownBanks.stcPay(senders = setOf("STC-SENDER"), defaultAccount = "STC Pay")),
             keywords = listOf(
-                KeywordRule("LULU", Category("🏘️ Household", "Home Stationery"), note = "Lulu"),
-                KeywordRule("shawrm", Category("🍜 Food & Dining", "Restaurant Bills")),
+                KeywordRule(listOf("LULU"), Category("🏘️ Household", "Home Stationery"), note = "Lulu"),
+                KeywordRule(listOf("shawrm"), Category("🍜 Food & Dining", "Restaurant Bills")),
             ),
             accountsByCard = mapOf("1234" to "STC Pay 💳"),
         ),

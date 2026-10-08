@@ -42,8 +42,8 @@ class SmsProcessorTest {
             ),
         ),
         keywords = listOf(
-            KeywordRule("PANDA", Category("Food", "Groceries")),
-            KeywordRule("STC", Category("Bills", "Phone")),
+            KeywordRule(listOf("PANDA"), Category("Food", "Groceries")),
+            KeywordRule(listOf("STC"), Category("Bills", "Phone")),
         ),
         accountsByCard = mapOf("4821" to "Example Credit Card"),
     )
