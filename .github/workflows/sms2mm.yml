@@ -38,10 +38,20 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.SMS2MM_KEYSTORE_PASSWORD }}
         run: |
           if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
-            echo "$KEYSTORE_B64" | tr -d ' \n\r' | base64 -d > "$RUNNER_TEMP/sms2mm.jks"
-            echo "SMS2MM_KEYSTORE=$RUNNER_TEMP/sms2mm.jks" >> "$GITHUB_ENV"
-            echo "SMS2MM_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
-            echo "Signing with the stable key"
+            echo "$KEYSTORE_B64" | tr -d ' \n\r\t' | base64 -d > "$RUNNER_TEMP/sms2mm.jks"
+            # Copy-paste on a phone can add spaces or line breaks; the password has none.
+            PW=$(printf '%s' "$KEYSTORE_PASSWORD" | tr -d ' \n\r\t')
+            # Safe checks only (no secret values): which secret is wrong if signing fails.
+            echo "keystore sha256 prefix: $(sha256sum "$RUNNER_TEMP/sms2mm.jks" | cut -c1-16)"
+            echo "password length: ${#PW}"
+            if keytool -list -keystore "$RUNNER_TEMP/sms2mm.jks" -storepass "$PW" > /dev/null 2>&1; then
+              echo "SMS2MM_KEYSTORE=$RUNNER_TEMP/sms2mm.jks" >> "$GITHUB_ENV"
+              echo "SMS2MM_KEYSTORE_PASSWORD=$PW" >> "$GITHUB_ENV"
+              echo "Signing with the stable key"
+            else
+              echo "::error::The signing password does not open the keystore: re-paste SMS2MM_KEYSTORE_PASSWORD (and SMS2MM_KEYSTORE_B64)"
+              exit 1
+            fi
           else
             echo "::warning::No signing secrets set: using a temporary debug key (updates need an uninstall first)"
           fi
