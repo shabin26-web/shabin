@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import sms2mm.core.Category
+import sms2mm.core.RuleSet
 import sms2mm.core.SmsOutcome
 import sms2mm.core.TxnType
 import sms2mm.core.UserRules
@@ -100,17 +101,32 @@ object Store {
         _changes.value = _changes.value + 1
     }
 
+    // In-memory copies: files are read once, then served from memory (writes go to both).
+    private var rulesCache: UserRules? = null
+    private var ruleSetCache: Pair<UserRules, RuleSet>? = null
+    private var txnCache: List<PendingTxn>? = null
+    private var skipCache: List<SkipEvent>? = null
+
     // ---------------------------------------------------------------- rules
 
-    fun rules(ctx: Context): UserRules {
-        return synchronized(lock) {
+    fun rules(ctx: Context): UserRules = synchronized(lock) {
+        rulesCache ?: run {
             val f = file(ctx, "rules.json")
-            if (!f.exists()) return UserRules()
-            try { UserRules.fromJson(f.readText()) } catch (_: Exception) { UserRules() }
+            val loaded = if (!f.exists()) UserRules() else try { UserRules.fromJson(f.readText()) } catch (_: Exception) { UserRules() }
+            loaded.also { rulesCache = it }
         }
     }
 
-    fun saveRules(ctx: Context, rules: UserRules) = synchronized(lock) { write(ctx, "rules.json", rules.toJson()) }
+    /** The compiled rules for the SMS processor, rebuilt only when the rules change. */
+    fun ruleSet(ctx: Context): RuleSet = synchronized(lock) {
+        val r = rules(ctx)
+        ruleSetCache?.takeIf { it.first === r }?.second ?: r.toRuleSet().also { ruleSetCache = r to it }
+    }
+
+    fun saveRules(ctx: Context, rules: UserRules) = synchronized(lock) {
+        rulesCache = rules
+        write(ctx, "rules.json", rules.toJson())
+    }
 
     fun updateRules(ctx: Context, change: (UserRules) -> UserRules) = synchronized(lock) { saveRules(ctx, change(rules(ctx))) }
 
@@ -118,26 +134,25 @@ object Store {
 
     private val txnList = ListSerializer(PendingTxn.serializer())
 
-    fun txns(ctx: Context): List<PendingTxn> {
-        return synchronized(lock) {
+    fun txns(ctx: Context): List<PendingTxn> = synchronized(lock) {
+        txnCache ?: run {
             val f = file(ctx, "txns.json")
-            if (!f.exists()) return emptyList()
-            try { json.decodeFromString(txnList, f.readText()) } catch (_: Exception) { emptyList() }
+            val loaded = if (!f.exists()) emptyList() else try { json.decodeFromString(txnList, f.readText()) } catch (_: Exception) { emptyList() }
+            loaded.also { txnCache = it }
         }
     }
 
     fun txn(ctx: Context, id: String): PendingTxn? = txns(ctx).firstOrNull { it.id == id }
 
-    private fun saveTxns(ctx: Context, list: List<PendingTxn>) = write(ctx, "txns.json", json.encodeToString(txnList, list))
+    private fun saveTxns(ctx: Context, list: List<PendingTxn>) {
+        txnCache = list
+        write(ctx, "txns.json", json.encodeToString(txnList, list))
+    }
 
     /** Adds a new transaction; false when the same SMS was already captured. */
-    fun insert(ctx: Context, txn: PendingTxn): Boolean {
-        return synchronized(lock) {
-            val list = txns(ctx)
-            if (list.any { it.id == txn.id }) return false
-            saveTxns(ctx, listOf(txn) + list)
-            true
-        }
+    fun insert(ctx: Context, txn: PendingTxn): Boolean = synchronized(lock) {
+        val list = txns(ctx)
+        if (list.any { it.id == txn.id }) false else { saveTxns(ctx, listOf(txn) + list); true }
     }
 
     fun update(ctx: Context, id: String, change: (PendingTxn) -> PendingTxn) = synchronized(lock) {
@@ -150,19 +165,20 @@ object Store {
 
     private val skipList = ListSerializer(SkipEvent.serializer())
 
-    fun skips(ctx: Context): List<SkipEvent> {
-        return synchronized(lock) {
+    fun skips(ctx: Context): List<SkipEvent> = synchronized(lock) {
+        skipCache ?: run {
             val f = file(ctx, "skips.json")
-            if (!f.exists()) return emptyList()
-            try { json.decodeFromString(skipList, f.readText()) } catch (_: Exception) { emptyList() }
+            val loaded = if (!f.exists()) emptyList() else try { json.decodeFromString(skipList, f.readText()) } catch (_: Exception) { emptyList() }
+            loaded.also { skipCache = it }
         }
     }
 
     fun addSkip(ctx: Context, event: SkipEvent) = synchronized(lock) {
         // Keep the current and previous month only.
         val cutoff = YearMonth.now().minusMonths(1).atDay(1).atStartOfDay()
-        val kept = skips(ctx).filter { LocalDateTime.parse(it.at) >= cutoff }
-        write(ctx, "skips.json", json.encodeToString(skipList, kept + event))
+        val kept = skips(ctx).filter { LocalDateTime.parse(it.at) >= cutoff } + event
+        skipCache = kept
+        write(ctx, "skips.json", json.encodeToString(skipList, kept))
     }
 
     // ---------------------------------------------------------------- settings

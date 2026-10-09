@@ -31,6 +31,21 @@ jobs:
       - name: Core tests (parser, OTP filter, keyword rules)
         run: ./gradlew -p core test --console=plain
 
+      # Optional stable signing key (repository secrets SMS2MM_KEYSTORE_B64 + SMS2MM_KEYSTORE_PASSWORD).
+      - name: Restore signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.SMS2MM_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.SMS2MM_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
+            echo "$KEYSTORE_B64" | tr -d ' \n\r' | base64 -d > "$RUNNER_TEMP/sms2mm.jks"
+            echo "SMS2MM_KEYSTORE=$RUNNER_TEMP/sms2mm.jks" >> "$GITHUB_ENV"
+            echo "SMS2MM_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "Signing with the stable key"
+          else
+            echo "::warning::No signing secrets set: using a temporary debug key (updates need an uninstall first)"
+          fi
+
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug --console=plain
 

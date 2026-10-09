@@ -122,4 +122,13 @@ class UserRulesTest {
         assertEquals(listOf("LULU"), loaded.keywords.single().keywords)
         assertEquals("SNB 💸", loaded.toRuleSet().banks.single().defaultAccount)
     }
+
+    @Test
+    fun `keywords match regardless of spaces and dashes`() {
+        val r = UserRules(keywords = listOf(KeywordRule(listOf("AL BAIK"), restaurant), KeywordRule(listOf("STC"), household)))
+        assertEquals(restaurant, r.explain("ALBAIK JEDDAH")?.category)
+        assertEquals(restaurant, r.explain("Al-Baik Express")?.category)
+        // Short keywords (under 4 letters) still need to appear as written.
+        assertNull(r.explain("S-T-C"))
+    }
 }

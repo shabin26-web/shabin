@@ -61,4 +61,9 @@ fun SuggestField(label: String, value: String, suggestions: List<String>, onChan
 }
 
 @Composable
-fun SectionTitle(text: String) = Text(text, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+fun SectionTitle(text: String) = Text(
+    text.uppercase(),
+    style = MaterialTheme.typography.labelSmall,
+    color = Palette.Cyan,
+    modifier = Modifier.padding(top = 16.dp, bottom = 6.dp),
+)

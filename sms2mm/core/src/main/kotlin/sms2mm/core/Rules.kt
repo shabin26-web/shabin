@@ -95,13 +95,14 @@ object KeywordMatcher {
     fun <T> best(text: String?, rules: List<T>, keywordsOf: (T) -> List<String>): T? {
         if (text.isNullOrBlank()) return null
         val haystack = Digits.normalize(text)
+        val compactHaystack = compact(haystack)
         var best: T? = null
         var bestLength = 0
         for (rule in rules) {
             val length = keywordsOf(rule)
                 .map { Digits.normalize(it.trim()) }
-                .filter { it.isNotEmpty() && haystack.contains(it, ignoreCase = true) }
-                .maxOfOrNull { it.length } ?: continue
+                .filter { it.isNotEmpty() && matches(haystack, compactHaystack, it) }
+                .maxOfOrNull { compact(it).length.coerceAtLeast(1) } ?: continue
             if (length > bestLength) {
                 best = rule
                 bestLength = length
@@ -109,6 +110,18 @@ object KeywordMatcher {
         }
         return best
     }
+
+    /**
+     * Plain "contains", or — for keywords of 4+ letters — the same ignoring spaces and
+     * punctuation, so "AL BAIK" also matches "AL-BAIK" and "ALBAIK" in a bank SMS.
+     */
+    private fun matches(haystack: String, compactHaystack: String, keyword: String): Boolean {
+        if (haystack.contains(keyword, ignoreCase = true)) return true
+        val k = compact(keyword)
+        return k.length >= 4 && compactHaystack.contains(k)
+    }
+
+    private fun compact(s: String) = s.filter { it.isLetterOrDigit() }.lowercase()
 }
 
 /** Converts Arabic-Indic digits and separators so one regex handles both scripts. */

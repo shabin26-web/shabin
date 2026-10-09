@@ -27,9 +27,10 @@ and on **Add** opens Money Manager and fills the entry in. You check it and tap 
    No GitHub login is needed.
 2. **Samsung Auto Blocker**: Settings → Security and privacy → **Auto Blocker → Off**. Turn it back on
    after step 5.
-3. **Install**: open `sms2mm.apk` from Downloads. If asked, allow installing from this source.
-   If Play Protect warns, tap **More details → Install anyway**. It warns because the app reads
-   SMS and isn't from the Play Store, which doesn't allow SMS-reading apps like this.
+3. **Install**: Google Play Protect blocks apps installed from a file that ask for SMS or
+   Accessibility access ("App blocked to protect your device"). Pause it: Play Store → profile →
+   **Play Protect → ⚙️ → Scan apps with Play Protect → Off**. Open `sms2mm.apk` from Downloads and
+   install it, then turn scanning back on. If it warns about this app later, choose **Keep app**.
 4. Save your `sms2mm-rules.json` into Downloads.
 5. **Restricted settings**: open the app once, then go to Settings → Apps → **SMS → Money Manager** →
    ⋮ (top right) → **Allow restricted settings**. Android needs this before it lets an app installed
@@ -40,10 +41,13 @@ and on **Add** opens Money Manager and fills the entry in. You check it and tap 
    - **Banks**: **Scan inbox for bank senders** → `+` each sender → **Save**.
 7. **Check**: Settings → Apps → SMS → Money Manager → Permissions shows no internet access.
 
-**Updating:** before installing a newer build, **Setup → Export rules** first. Each CI build is signed
-with a temporary key, so Android may refuse to install it over the old version ("App not installed").
-If that happens, uninstall the old version, install the new one, and **Import rules** again.
-The Pending list starts empty after a reinstall.
+**Updating:** when the repository has the signing secrets below, every build is signed with the same
+key, so a new version installs over the old one and keeps your rules and Pending list. Without them,
+Android says "App not installed": export your rules, uninstall, install, import again.
+
+**Signing secrets (one-time):** GitHub → repository **Settings → Secrets and variables → Actions →
+New repository secret**: `SMS2MM_KEYSTORE_B64` (the base64 keystore) and `SMS2MM_KEYSTORE_PASSWORD`.
+Keep the keystore private; anyone with it could sign an app that installs as an update to this one.
 
 ## Using it
 
