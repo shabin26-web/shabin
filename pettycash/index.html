@@ -1,0 +1,1182 @@
+<title>Petty Cash Imprest</title>
+<meta name="description" content="Imprest petty cash: vouchers with 15% VAT split, top-ups, SAR cash count, custodian reconciliation and exports.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: ledger workbook. A status strip (book vs counted) sits above tabbed working sheets. */
+:root {
+  --bg: #f5f7f6;
+  --surface: #ffffff;
+  --sunk: #eef2f0;
+  --line: #d6dfdb;
+  --fg: #16231f;
+  --muted: #5b6b65;
+  --accent: #0d5c4a;
+  --accent-ink: #ffffff;
+  --accent-soft: #dcebe5;
+  --ok: #1d7a43;
+  --ok-soft: #e1f2e7;
+  --warn: #9a5b00;
+  --warn-soft: #fbefd9;
+  --bad: #b3261e;
+  --bad-soft: #fbe3e1;
+  --font-ui: "Instrument Sans", "Segoe UI", Arial, system-ui, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1614; --surface: #16201d; --sunk: #1c2824; --line: #2c3a35;
+    --fg: #e4ece9; --muted: #95a6a0; --accent: #4fb89a; --accent-ink: #062019; --accent-soft: #173a31;
+    --ok: #5cc98a; --ok-soft: #173826; --warn: #e3a64a; --warn-soft: #3a2a10; --bad: #f08079; --bad-soft: #42201d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1614; --surface: #16201d; --sunk: #1c2824; --line: #2c3a35;
+  --fg: #e4ece9; --muted: #95a6a0; --accent: #4fb89a; --accent-ink: #062019; --accent-soft: #173a31;
+  --ok: #5cc98a; --ok-soft: #173826; --warn: #e3a64a; --warn-soft: #3a2a10; --bad: #f08079; --bad-soft: #42201d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font: 14px/1.5 var(--font-ui); margin: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; display: grid; gap: 18px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; line-height: 1.25; }
+h1 { font-size: 1.45rem; font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1.1rem; font-weight: 600; }
+h3 { font-size: 0.95rem; font-weight: 600; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.small { font-size: 0.82rem; }
+.num, td.num, th.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 600; }
+
+header.top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; }
+header.top .meta { display: grid; gap: 2px; }
+.mode { font-size: 0.78rem; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.dot.live { background: var(--ok); }
+
+.strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.strip > div { padding: 12px 16px; display: grid; gap: 4px; border-left: 1px solid var(--line); min-width: 0; }
+.strip > div:first-child { border-left: 0; }
+.strip .v { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 1.15rem; font-weight: 600; }
+@media (max-width: 560px) { .strip > div { border-left: 0; border-top: 1px solid var(--line); } .strip > div:first-child { border-top: 0; } }
+
+.pill { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; border: 1px solid transparent; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.neutral { background: var(--sunk); color: var(--muted); }
+
+nav.tabs { display: flex; gap: 2px; overflow-x: auto; border-bottom: 1px solid var(--line); }
+nav.tabs button { appearance: none; border: 0; background: none; font: inherit; font-weight: 600; color: var(--muted); padding: 10px 14px; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
+nav.tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+nav.tabs button:hover { color: var(--fg); }
+
+section.panel { display: grid; gap: 18px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 14px; min-width: 0; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 860px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+
+form.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px 14px; align-items: end; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field.wide { grid-column: 1 / -1; }
+.field label { font-size: 0.78rem; font-weight: 600; color: var(--muted); }
+input[type="text"], input[type="date"], input[type="number"], select, textarea {
+  font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 7px 9px; width: 100%; min-width: 0;
+}
+input.amt { font-family: var(--font-num); text-align: right; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 0.88rem; padding-block: 7px; }
+.check input { width: 16px; height: 16px; accent-color: var(--accent); }
+.hint { font-size: 0.78rem; color: var(--muted); }
+.hint.err { color: var(--bad); }
+
+.btn { appearance: none; font: inherit; font-weight: 600; border-radius: 4px; padding: 7px 14px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--fg); white-space: nowrap; }
+.btn:hover { background: var(--sunk); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { color: var(--bad); }
+.btn.link { border: 0; background: none; padding: 2px 6px; color: var(--accent); font-weight: 600; }
+.btn.link.danger { color: var(--bad); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.row.end { justify-content: flex-end; }
+.spread { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.86rem; font-family: var(--font-ui); color: var(--fg); }
+th, td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+thead th { background: var(--sunk); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; position: sticky; top: 0; }
+tbody tr:last-child td { border-bottom: 0; }
+tfoot td { font-weight: 700; border-top: 2px solid var(--fg); border-bottom: 0; background: var(--sunk); }
+tr.exc td:first-child { box-shadow: inset 3px 0 0 var(--bad); }
+tr.reimb td { color: var(--muted); }
+td .pill { margin: 1px 3px 1px 0; }
+.empty { padding: 28px 16px; text-align: center; color: var(--muted); }
+
+.recon { display: grid; gap: 0; }
+.recon .ln { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.recon .ln .op { font-family: var(--font-num); color: var(--muted); text-align: center; }
+.recon .ln.sub { font-weight: 700; border-bottom: 2px solid var(--fg); }
+.recon .ln.res { border-bottom: 0; font-weight: 700; padding-top: 12px; }
+.tie { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: var(--r); font-weight: 600; }
+.tie.ok { background: var(--ok-soft); color: var(--ok); }
+.tie.bad { background: var(--bad-soft); color: var(--bad); }
+.tie.warn { background: var(--warn-soft); color: var(--warn); }
+.checks { display: grid; gap: 6px; }
+.checks div { display: flex; justify-content: space-between; gap: 12px; font-size: 0.88rem; }
+
+.denoms td input { width: 90px; text-align: right; font-family: var(--font-num); padding: 4px 6px; }
+.kind { font-size: 0.72rem; color: var(--muted); }
+
+.confirm { display: inline-flex; gap: 4px; align-items: center; font-size: 0.8rem; }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 9px 16px; border-radius: 6px; font-weight: 600; font-size: 0.88rem; max-width: calc(100% - 32px); z-index: 10; }
+.banner { background: var(--warn-soft); color: var(--warn); border-radius: var(--r); padding: 10px 14px; font-size: 0.88rem; display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
+@media (prefers-reduced-motion: no-preference) { .btn, nav.tabs button { transition: background-color .12s, color .12s; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="meta">
+      <span class="label">Petty cash imprest</span>
+      <h1 id="hEntity">Petty Cash Imprest</h1>
+      <p class="muted small" id="hSub">Custodian not set · Period not set</p>
+    </div>
+    <span class="mode"><span class="dot" id="modeDot"></span><span id="modeText">Connecting…</span></span>
+  </header>
+
+  <div id="exampleBanner" class="banner" hidden>
+    <span>This register holds <strong>example entries</strong> marked "Example". Clear them before recording real vouchers.</span>
+    <span id="exampleActions"><button class="btn" type="button" id="btnClearExamples">Clear example data</button></span>
+  </div>
+
+  <div class="strip" aria-label="Fund status">
+    <div><span class="label">Imprest float</span><span class="v" id="sFloat">0.00</span></div>
+    <div><span class="label">Book balance</span><span class="v" id="sBook">0.00</span></div>
+    <div><span class="label">Cash counted</span><span class="v" id="sCount">0.00</span></div>
+    <div><span class="label">Difference</span><span class="v" id="sDiff">0.00</span><span id="sDiffPill"></span></div>
+    <div><span class="label">Pending claim</span><span class="v" id="sClaim">0.00</span><span class="small muted" id="sClaimN"></span></div>
+  </div>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" data-tab="vouchers" id="tab-vouchers">Vouchers</button>
+    <button role="tab" data-tab="topups" id="tab-topups">Top-ups</button>
+    <button role="tab" data-tab="count" id="tab-count">Cash count</button>
+    <button role="tab" data-tab="recon" id="tab-recon">Reconciliation</button>
+    <button role="tab" data-tab="reports" id="tab-reports">Reports</button>
+    <button role="tab" data-tab="setup" id="tab-setup">Setup</button>
+  </nav>
+
+  <!-- VOUCHERS -->
+  <section class="panel" data-panel="vouchers">
+    <div class="card">
+      <div class="spread"><h2 id="vFormTitle">New voucher</h2><span class="small muted" id="vNoHint"></span></div>
+      <form class="grid" id="vForm" autocomplete="off">
+        <div class="field"><label for="vDate">Date</label><input type="date" id="vDate" required></div>
+        <div class="field"><label for="vPayee">Payee / supplier</label><input type="text" id="vPayee" required placeholder="e.g. Jarir Bookstore"></div>
+        <div class="field"><label for="vCat">Category</label><select id="vCat"></select></div>
+        <div class="field"><label for="vGross">Gross amount (SAR, incl. VAT)</label><input type="text" inputmode="decimal" class="amt" id="vGross" required placeholder="0.00"></div>
+        <div class="field wide"><label for="vDesc">Description</label><input type="text" id="vDesc" placeholder="What was bought and why"></div>
+        <div class="field"><label class="check"><input type="checkbox" id="vVat" checked> VAT 15% included</label></div>
+        <div class="field"><label for="vVatNo">Supplier VAT no.</label><input type="text" id="vVatNo" inputmode="numeric" maxlength="15" placeholder="3xxxxxxxxxxxxx3"><span class="hint" id="vVatNoHint">15 digits, starts and ends with 3</span></div>
+        <div class="field"><label class="check"><input type="checkbox" id="vReceipt" checked> Receipt / tax invoice attached</label></div>
+        <div class="field"><span class="label">Split</span><span class="num" id="vSplit" style="text-align:left">Net 0.00 · VAT 0.00</span></div>
+        <div class="field wide row end">
+          <span class="hint err" id="vErr"></span>
+          <button class="btn" type="button" id="vCancel" hidden>Cancel edit</button>
+          <button class="btn primary" type="submit" id="vSave">Add voucher</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="spread">
+        <h2>Voucher register</h2>
+        <div class="row">
+          <select id="vFilter" aria-label="Filter vouchers">
+            <option value="all">All vouchers</option>
+            <option value="pending">Not yet reimbursed</option>
+            <option value="exc">With exceptions</option>
+          </select>
+        </div>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>No.</th><th>Date</th><th>Payee</th><th>Category</th><th>VAT no.</th><th class="num">Net</th><th class="num">VAT</th><th class="num">Gross</th><th>Status</th><th></th></tr></thead>
+          <tbody id="vBody"></tbody>
+          <tfoot id="vFoot"></tfoot>
+        </table>
+      </div>
+      <p class="small muted" id="vCheck"></p>
+    </div>
+  </section>
+
+  <!-- TOP-UPS -->
+  <section class="panel" data-panel="topups" hidden>
+    <div class="cols">
+      <div class="card">
+        <h2>Record a top-up</h2>
+        <p class="small muted">Tick the vouchers this cheque or transfer reimburses. The amount follows the ticked total; use the float button to restore the box to the full imprest instead.</p>
+        <form class="grid" id="tForm" autocomplete="off">
+          <div class="field"><label for="tDate">Date</label><input type="date" id="tDate" required></div>
+          <div class="field"><label for="tRef">Reference</label><input type="text" id="tRef" placeholder="Cheque / transfer no."></div>
+          <div class="field"><label for="tAmt">Amount (SAR)</label><input type="text" inputmode="decimal" class="amt" id="tAmt" required placeholder="0.00"></div>
+          <div class="field wide"><label for="tNote">Note</label><input type="text" id="tNote" placeholder="Optional"></div>
+          <div class="field wide">
+            <span class="label">Vouchers covered</span>
+            <div id="tList" class="checks"></div>
+          </div>
+          <div class="field wide row end">
+            <span class="hint err" id="tErr"></span>
+            <button class="btn" type="button" id="tToFloat">Replenish to imprest</button>
+            <button class="btn primary" type="submit">Record top-up</button>
+          </div>
+        </form>
+      </div>
+      <div class="card">
+        <h2>Top-ups recorded</h2>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Date</th><th>Reference</th><th class="num">Vouchers</th><th class="num">Amount</th><th class="num">Unmatched</th><th></th></tr></thead>
+            <tbody id="tBody"></tbody>
+            <tfoot id="tFoot"></tfoot>
+          </table>
+        </div>
+        <p class="small muted">Unmatched = top-up amount less the vouchers it covers. A non-zero figure changes the size of the float and shows in the reconciliation.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CASH COUNT -->
+  <section class="panel" data-panel="count" hidden>
+    <div class="cols">
+      <div class="card">
+        <div class="spread"><h2>Physical cash count</h2><button class="btn" type="button" id="cZero">Reset count</button></div>
+        <div class="tablewrap">
+          <table class="denoms">
+            <thead><tr><th>Denomination</th><th class="num">Quantity</th><th class="num">Amount (SAR)</th></tr></thead>
+            <tbody id="cBody"></tbody>
+            <tfoot><tr><td>Total counted</td><td class="num" id="cPieces"></td><td class="num" id="cTotal">0.00</td></tr></tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Count details</h2>
+        <form class="grid" id="cForm" autocomplete="off">
+          <div class="field"><label for="cDate">Count date</label><input type="date" id="cDate"></div>
+          <div class="field"><label for="cBy">Counted by</label><input type="text" id="cBy" placeholder="Name"></div>
+          <div class="field"><label for="cWit">Witnessed by</label><input type="text" id="cWit" placeholder="Name"></div>
+          <div class="field wide"><label for="cIou">IOUs / advances in the box (listed, not counted as cash)</label><input type="text" id="cIou" placeholder="Optional"></div>
+        </form>
+        <div id="cTie"></div>
+        <p class="small muted">The count saves as you type. The total is compared with the book balance on the Reconciliation tab.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- RECONCILIATION -->
+  <section class="panel" data-panel="recon" hidden>
+    <div class="cols">
+      <div class="card">
+        <h2>Book balance vs cash counted</h2>
+        <div class="recon" id="rA"></div>
+        <div id="rATie"></div>
+      </div>
+      <div class="card">
+        <h2>Imprest check</h2>
+        <div class="recon" id="rB"></div>
+        <div id="rBTie"></div>
+      </div>
+    </div>
+    <div class="cols">
+      <div class="card">
+        <h2>Tie-outs</h2>
+        <div class="checks" id="rChecks"></div>
+      </div>
+      <div class="card">
+        <h2>Sign-off</h2>
+        <form class="grid" id="sForm" autocomplete="off">
+          <div class="field"><label for="sCust">Custodian</label><input type="text" id="sCust"></div>
+          <div class="field"><label for="sCustDate">Date</label><input type="date" id="sCustDate"></div>
+          <div class="field"><label for="sRev">Reviewed by</label><input type="text" id="sRev"></div>
+          <div class="field"><label for="sRevDate">Date</label><input type="date" id="sRevDate"></div>
+          <div class="field wide"><label for="sNote">Explanation of any difference</label><textarea id="sNote" rows="2"></textarea></div>
+          <div class="field wide row end"><button class="btn primary" type="submit">Save sign-off</button></div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- REPORTS -->
+  <section class="panel" data-panel="reports" hidden>
+    <div class="card">
+      <div class="spread"><h2>Summary by category</h2><span id="repCheck"></span></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Category</th><th>GL account</th><th class="num">Vouchers</th><th class="num">Net</th><th class="num">Input VAT</th><th class="num">Gross</th></tr></thead>
+          <tbody id="repBody"></tbody>
+          <tfoot id="repFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="spread">
+        <h2>Replenishment journal entry</h2>
+        <select id="jeSel" aria-label="Journal source"></select>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Account</th><th>Description</th><th class="num">Debit</th><th class="num">Credit</th></tr></thead>
+          <tbody id="jeBody"></tbody>
+          <tfoot id="jeFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Export</h2>
+      <p class="small muted">The Excel workbook uses Arial, live formulas for every total and difference, and highlights exceptions and non-zero residuals. CSV files suit posting imports.</p>
+      <div class="row">
+        <button class="btn primary" type="button" id="xXlsx">Excel workbook (.xlsx)</button>
+        <button class="btn" type="button" id="xCsvV">Vouchers CSV</button>
+        <button class="btn" type="button" id="xCsvS">Summary CSV</button>
+        <button class="btn" type="button" id="xCsvT">Top-ups CSV</button>
+        <button class="btn" type="button" id="xCsvC">Cash count CSV</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETUP -->
+  <section class="panel" data-panel="setup" hidden>
+    <div class="cols">
+      <div class="card">
+        <h2>Fund</h2>
+        <form class="grid" id="gForm" autocomplete="off">
+          <div class="field wide"><label for="gEntity">Entity name</label><input type="text" id="gEntity" placeholder="Client company name"></div>
+          <div class="field"><label for="gCust">Custodian</label><input type="text" id="gCust"></div>
+          <div class="field"><label for="gFloat">Imprest float (SAR)</label><input type="text" inputmode="decimal" class="amt" id="gFloat"></div>
+          <div class="field"><label for="gLimit">Single voucher limit (SAR)</label><input type="text" inputmode="decimal" class="amt" id="gLimit"></div>
+          <div class="field"><label for="gFrom">Period from</label><input type="date" id="gFrom"></div>
+          <div class="field"><label for="gTo">Period to</label><input type="date" id="gTo"></div>
+          <div class="field"><label for="gVatAcc">Input VAT account</label><input type="text" id="gVatAcc"></div>
+          <div class="field"><label for="gBankAcc">Bank account (credit)</label><input type="text" id="gBankAcc"></div>
+          <div class="field wide row end"><span class="hint err" id="gErr"></span><button class="btn primary" type="submit">Save fund settings</button></div>
+        </form>
+      </div>
+      <div class="card">
+        <h2>Expense categories</h2>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Category</th><th>GL account</th><th></th></tr></thead>
+            <tbody id="catBody"></tbody>
+          </table>
+        </div>
+        <form class="grid" id="catForm" autocomplete="off">
+          <div class="field"><label for="catName">New category</label><input type="text" id="catName"></div>
+          <div class="field"><label for="catAcc">GL account</label><input type="text" id="catAcc"></div>
+          <div class="field"><button class="btn" type="submit">Add category</button></div>
+        </form>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Backup</h2>
+      <p class="small muted" id="bkNote">Save a JSON backup of everything in this register, or restore one. Restoring replaces the current register.</p>
+      <div class="row">
+        <button class="btn" type="button" id="bkSave">Save backup</button>
+        <label class="btn" for="bkFile">Restore from backup…</label>
+        <input type="file" id="bkFile" accept="application/json,.json" hidden>
+        <span id="bkConfirm"></span>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+"use strict";
+
+/* ---------- money (integer halalas) ---------- */
+const toH = (s) => {
+  s = String(s ?? "").replace(/[,\s]/g, "").replace(/^SAR/i, "");
+  if (!/^\d+(\.\d{0,2})?$/.test(s)) return NaN;
+  const [i, f = ""] = s.split(".");
+  return parseInt(i, 10) * 100 + parseInt((f + "00").slice(0, 2), 10);
+};
+const fmt = (h) => {
+  h = Math.round(h || 0);
+  const neg = h < 0; const a = Math.abs(h);
+  return (neg ? "−" : "") + Math.floor(a / 100).toLocaleString("en-US") + "." + String(a % 100).padStart(2, "0");
+};
+const plain = (h) => (h / 100).toFixed(2);
+const split = (gross, vat) => {
+  if (!vat) return { net: gross, vat: 0 };
+  const net = Math.round(gross * 100 / 115);
+  return { net, vat: gross - net };
+};
+const vatNoOk = (s) => /^3\d{13}3$/.test(s || "");
+const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const $ = (id) => document.getElementById(id);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+const DENOMS = [
+  { k: "n500", v: 50000, label: "500 riyal", kind: "Note" },
+  { k: "n200", v: 20000, label: "200 riyal", kind: "Note" },
+  { k: "n100", v: 10000, label: "100 riyal", kind: "Note" },
+  { k: "n50", v: 5000, label: "50 riyal", kind: "Note" },
+  { k: "n20", v: 2000, label: "20 riyal", kind: "Note" },
+  { k: "n10", v: 1000, label: "10 riyal", kind: "Note" },
+  { k: "n5", v: 500, label: "5 riyal", kind: "Note" },
+  { k: "c2", v: 200, label: "2 riyal", kind: "Coin" },
+  { k: "n1", v: 100, label: "1 riyal", kind: "Note / coin" },
+  { k: "h50", v: 50, label: "50 halala", kind: "Coin" },
+  { k: "h25", v: 25, label: "25 halala", kind: "Coin" },
+  { k: "h10", v: 10, label: "10 halala", kind: "Coin" },
+  { k: "h5", v: 5, label: "5 halala", kind: "Coin" },
+];
+const DEFAULT_CATS = [
+  { name: "Office supplies & stationery", account: "6110" },
+  { name: "Transport & fuel", account: "6120" },
+  { name: "Meals & refreshments", account: "6130" },
+  { name: "Postage & courier", account: "6140" },
+  { name: "Repairs & maintenance", account: "6150" },
+  { name: "Government fees", account: "6160" },
+  { name: "Cleaning & pantry", account: "6170" },
+  { name: "Miscellaneous", account: "6190" },
+];
+const DEFAULT_SETTINGS = {
+  entity: "", custodian: "", float: 500000, limit: 100000, from: "", to: "",
+  vatAccount: "1410 Input VAT", bankAccount: "1120 Bank", categories: DEFAULT_CATS,
+  signoff: { cust: "", custDate: "", rev: "", revDate: "", note: "" },
+};
+
+/* ---------- state ---------- */
+const S = { settings: structuredClone(DEFAULT_SETTINGS), vouchers: [], topups: [], count: { q: {}, date: "", by: "", wit: "", iou: "" } };
+let mode = "starting"; // "db" | "local"
+let db = null;
+
+/* ---------- storage: db capability, else browser storage ---------- */
+const LKEY = "pettycash.v1";
+const readLocal = () => { try { const j = JSON.parse(localStorage.getItem(LKEY) || "null"); return j; } catch { return null; } };
+const writeLocal = () => { try { localStorage.setItem(LKEY, JSON.stringify({ settings: S.settings, vouchers: S.vouchers, topups: S.topups, count: S.count })); } catch { /* storage blocked */ } };
+
+const Store = {
+  async saveSettings(patch) {
+    S.settings = { ...S.settings, ...patch };
+    if (mode === "db") await db.doc("pc/settings").set(clean(S.settings)); else { writeLocal(); render(); }
+  },
+  async saveVoucher(v) {
+    const i = S.vouchers.findIndex((x) => x.id === v.id);
+    if (i >= 0) S.vouchers[i] = v; else S.vouchers.push(v);
+    if (mode === "db") await db.collection("vouchers").doc(v.id).set(clean(v)); else { writeLocal(); render(); }
+  },
+  async deleteVoucher(id) {
+    S.vouchers = S.vouchers.filter((x) => x.id !== id);
+    if (mode === "db") await db.collection("vouchers").doc(id).delete(); else { writeLocal(); render(); }
+  },
+  async saveTopup(t) {
+    const i = S.topups.findIndex((x) => x.id === t.id);
+    if (i >= 0) S.topups[i] = t; else S.topups.push(t);
+    if (mode === "db") await db.collection("topups").doc(t.id).set(clean(t)); else { writeLocal(); render(); }
+  },
+  async deleteTopup(id) {
+    S.topups = S.topups.filter((x) => x.id !== id);
+    if (mode === "db") await db.collection("topups").doc(id).delete(); else { writeLocal(); render(); }
+  },
+  async saveCount(c) {
+    S.count = c;
+    if (mode === "db") await db.doc("pc/count").set(clean(c)); else { writeLocal(); render(); }
+  },
+};
+const clean = (o) => JSON.parse(JSON.stringify(o));
+
+/* Marked example register, loaded only when browser-only mode starts with nothing saved. */
+const EXAMPLE = {
+  settings: { ...DEFAULT_SETTINGS, example: true, entity: "Example Trading Co.", custodian: "Office administrator", float: 500000, limit: 100000, from: "2026-10-01", to: "2026-10-31" },
+  vouchers: [
+    { id: "ex-v1", no: 1, date: "2026-10-01", payee: "Jarir Bookstore", category: "Office supplies & stationery", desc: "Printer toner and A4 paper", vatApplicable: true, vatNo: "300000000000003", gross: 17250, receipt: true, topupId: "ex-t1", example: true },
+    { id: "ex-v2", no: 2, date: "2026-10-02", payee: "Aldrees Petrol", category: "Transport & fuel", desc: "Fuel for delivery van", vatApplicable: true, vatNo: "310123456700003", gross: 23000, receipt: true, topupId: "ex-t1", example: true },
+    { id: "ex-v3", no: 3, date: "2026-10-04", payee: "SMSA Express", category: "Postage & courier", desc: "Courier of signed contracts to Riyadh", vatApplicable: true, vatNo: "311111111100003", gross: 5750, receipt: true, topupId: null, example: true },
+    { id: "ex-v4", no: 4, date: "2026-10-05", payee: "Ministry of Commerce", category: "Government fees", desc: "CR extract fee", vatApplicable: false, vatNo: "", gross: 20000, receipt: true, topupId: null, example: true },
+    { id: "ex-v5", no: 5, date: "2026-10-06", payee: "Al Baik", category: "Meals & refreshments", desc: "Lunch for audit team", vatApplicable: true, vatNo: "", gross: 8625, receipt: false, topupId: null, example: true },
+  ],
+  topups: [{ id: "ex-t1", date: "2026-10-03", ref: "CHQ-10452", amount: 40250, note: "Reimburses PCV-0001 and PCV-0002", example: true }],
+  count: { q: { n500: 8, n100: 5, n50: 2, n10: 4, n5: 3, n1: 1, h25: 1 }, date: "2026-10-06", by: "Office administrator", wit: "", iou: "", example: true },
+};
+
+function startLocal() {
+  mode = "local";
+  const saved = readLocal() || structuredClone(EXAMPLE);
+  if (saved) {
+    S.settings = { ...structuredClone(DEFAULT_SETTINGS), ...saved.settings };
+    S.vouchers = saved.vouchers || []; S.topups = saved.topups || []; S.count = saved.count || S.count;
+  }
+  $("modeDot").className = "dot"; $("modeText").textContent = "Saved in this browser only";
+  fillCountForm(); render();
+}
+function startDb() {
+  mode = "db";
+  $("modeDot").className = "dot live"; $("modeText").textContent = "Shared register · live";
+  const onErr = (e) => { toast("Lost connection to the register: " + (e?.message || e?.code || "unknown error") + ". Reload the page."); $("modeDot").className = "dot"; $("modeText").textContent = "Disconnected"; };
+  db.doc("pc/settings").onSnapshot((d) => { S.settings = d.exists ? { ...structuredClone(DEFAULT_SETTINGS), ...d.data() } : structuredClone(DEFAULT_SETTINGS); fillForms(); render(); }, onErr);
+  db.doc("pc/count").onSnapshot((d) => { S.count = d.exists ? { q: {}, ...d.data() } : { q: {} }; fillCountForm(); render(); }, onErr);
+  db.collection("vouchers").onSnapshot((q) => { S.vouchers = q.docs.map((d) => ({ ...d.data(), id: d.id })); render(); }, onErr);
+  db.collection("topups").onSnapshot((q) => { S.topups = q.docs.map((d) => ({ ...d.data(), id: d.id })); render(); }, onErr);
+}
+async function boot() {
+  if (window.claude && typeof window.claude.use === "function") {
+    try { db = await window.claude.use("db"); } catch { db = null; }
+  }
+  if (db) startDb(); else startLocal();
+  fillForms();
+}
+
+let dlCap;
+async function getDownloads() {
+  if (dlCap !== undefined) return dlCap;
+  try { dlCap = window.claude?.use ? await window.claude.use("downloads") : null; } catch { dlCap = null; }
+  return dlCap;
+}
+async function saveFile(filename, data, mime) {
+  const blob = data instanceof Blob ? data : new Blob([data], { type: mime });
+  const dl = await getDownloads();
+  if (dl) {
+    try { await dl.save({ filename, data: blob }); toast("Saved " + filename); }
+    catch (e) { toast(e?.code === "declined" ? "Download cancelled" : "Could not save " + filename + ": " + (e?.message || e?.code)); }
+    return;
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+/* ---------- derived figures ---------- */
+function calc() {
+  const st = S.settings;
+  const vs = [...S.vouchers].sort((a, b) => (a.no || 0) - (b.no || 0));
+  const tops = [...S.topups].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+  const topIds = new Set(tops.map((t) => t.id));
+  let V = 0, N = 0, VAT = 0, U = 0, Un = 0, linked = 0;
+  for (const v of vs) {
+    const s = split(v.gross, v.vatApplicable);
+    v._net = s.net; v._vat = s.vat;
+    v._reimbursed = !!(v.topupId && topIds.has(v.topupId));
+    V += v.gross; N += s.net; VAT += s.vat;
+    if (v._reimbursed) linked += v.gross; else { U += v.gross; Un++; }
+    v._exc = exceptions(v);
+  }
+  const T = tops.reduce((a, t) => a + t.amount, 0);
+  for (const t of tops) {
+    t._covered = vs.filter((v) => v.topupId === t.id).reduce((a, v) => a + v.gross, 0);
+    t._n = vs.filter((v) => v.topupId === t.id).length;
+  }
+  const F = st.float || 0;
+  const B = F + T - V;
+  const C = DENOMS.reduce((a, d) => a + (parseInt(S.count.q?.[d.k], 10) || 0) * d.v, 0);
+  const X = T - linked;
+  return { vs, tops, V, N, VAT, U, Un, T, F, B, C, D: C - B, X, linked };
+}
+function exceptions(v) {
+  const st = S.settings, out = [];
+  if (v.vatApplicable && !v.vatNo) out.push("VAT no. missing");
+  if (v.vatNo && !vatNoOk(v.vatNo)) out.push("VAT no. invalid");
+  const lim = st.limit || st.float;
+  if (lim && v.gross > lim) out.push("Over limit");
+  if (v.date && v.date > today()) out.push("Future date");
+  if (v.date && st.from && v.date < st.from) out.push("Before period");
+  if (v.date && st.to && v.date > st.to) out.push("After period");
+  if (!v.receipt) out.push("No receipt");
+  if (!(st.categories || []).some((c) => c.name === v.category)) out.push("Unknown category");
+  return out;
+}
+const catAcc = (name) => (S.settings.categories || []).find((c) => c.name === name)?.account || "";
+const diffPill = (d) => d === 0 ? `<span class="pill ok">✓ Zero residual</span>` : d < 0 ? `<span class="pill bad">Shortage ${fmt(-d)}</span>` : `<span class="pill warn">Overage ${fmt(d)}</span>`;
+const vno = (n) => "PCV-" + String(n || 0).padStart(4, "0");
+
+/* ---------- render ---------- */
+function render() {
+  const k = calc(), st = S.settings;
+  $("hEntity").textContent = st.entity || "Petty Cash Imprest";
+  const per = st.from || st.to ? `${st.from || "…"} to ${st.to || "…"}` : "Period not set";
+  $("hSub").textContent = `Custodian: ${st.custodian || "not set"} · ${per} · Amounts in SAR`;
+  $("sFloat").textContent = fmt(k.F); $("sBook").textContent = fmt(k.B); $("sCount").textContent = fmt(k.C);
+  $("sDiff").textContent = fmt(k.D); $("sDiffPill").innerHTML = diffPill(k.D);
+  $("sClaim").textContent = fmt(k.U); $("sClaimN").textContent = `${k.Un} voucher${k.Un === 1 ? "" : "s"} not reimbursed`;
+  $("exampleBanner").hidden = !(S.vouchers.some((v) => v.example) || S.topups.some((t) => t.example));
+  renderVouchers(k); renderTopups(k); renderCount(k); renderRecon(k); renderReports(k); renderCats();
+  $("vNoHint").textContent = editingId ? `Editing ${vno(S.vouchers.find((v) => v.id === editingId)?.no)}` : `Next number ${vno(nextNo())}`;
+}
+const nextNo = () => S.vouchers.reduce((m, v) => Math.max(m, v.no || 0), 0) + 1;
+
+function renderVouchers(k) {
+  const f = $("vFilter").value;
+  const rows = k.vs.filter((v) => f === "all" || (f === "pending" && !v._reimbursed) || (f === "exc" && v._exc.length));
+  const tb = $("vBody");
+  if (!S.vouchers.length) { tb.innerHTML = `<tr><td colspan="10" class="empty">No vouchers yet. Enter the first one in the form above; each receipt paid from the box gets its own voucher.</td></tr>`; $("vFoot").innerHTML = ""; $("vCheck").textContent = ""; return; }
+  tb.innerHTML = rows.map((v) => `
+    <tr class="${v._exc.length ? "exc" : ""} ${v._reimbursed ? "reimb" : ""}">
+      <td class="num" style="text-align:left">${vno(v.no)}</td>
+      <td class="num" style="text-align:left">${esc(v.date)}</td>
+      <td>${esc(v.payee)}${v.example ? ' <span class="pill neutral">Example</span>' : ""}<div class="small muted">${esc(v.desc)}</div></td>
+      <td>${esc(v.category)}</td>
+      <td class="num" style="text-align:left">${esc(v.vatNo || "—")}</td>
+      <td class="num">${fmt(v._net)}</td><td class="num">${fmt(v._vat)}</td><td class="num">${fmt(v.gross)}</td>
+      <td>${v._reimbursed ? '<span class="pill ok">Reimbursed</span>' : '<span class="pill neutral">Pending</span>'}${v._exc.map((e) => `<span class="pill bad">${e}</span>`).join("")}</td>
+      <td style="white-space:nowrap">${confirmId === "v:" + v.id
+        ? `<span class="confirm">Delete? <button class="btn link danger" data-act="vdel" data-id="${v.id}">Yes</button><button class="btn link" data-act="nodel">No</button></span>`
+        : `<button class="btn link" data-act="vedit" data-id="${v.id}">Edit</button><button class="btn link danger" data-act="vask" data-id="${v.id}">Delete</button>`}</td>
+    </tr>`).join("") || `<tr><td colspan="10" class="empty">No vouchers match this filter.</td></tr>`;
+  const sN = rows.reduce((a, v) => a + v._net, 0), sV = rows.reduce((a, v) => a + v._vat, 0), sG = rows.reduce((a, v) => a + v.gross, 0);
+  $("vFoot").innerHTML = `<tr><td colspan="5">Total (${rows.length} shown)</td><td class="num">${fmt(sN)}</td><td class="num">${fmt(sV)}</td><td class="num">${fmt(sG)}</td><td colspan="2"></td></tr>`;
+  const resid = sN + sV - sG;
+  $("vCheck").innerHTML = `Check: net + VAT − gross = <span class="num">${fmt(resid)}</span> ${resid === 0 ? '<span class="pill ok">✓ ties</span>' : '<span class="pill bad">✗ does not tie</span>'}`;
+}
+
+function renderTopups(k) {
+  const pend = k.vs.filter((v) => !v._reimbursed);
+  const list = $("tList");
+  const prev = new Set([...list.querySelectorAll("input:checked")].map((i) => i.value));
+  const fresh = !list.dataset.init;
+  list.innerHTML = pend.length ? pend.map((v) => `<label class="check" style="justify-content:space-between;padding-block:2px"><span><input type="checkbox" value="${v.id}" ${fresh || prev.has(v.id) || !list.dataset.seen?.includes(v.id) ? "checked" : ""}> ${vno(v.no)} · ${esc(v.payee)}</span><span class="num">${fmt(v.gross)}</span></label>`).join("")
+    : `<p class="small muted">Every voucher has been reimbursed.</p>`;
+  list.dataset.init = "1"; list.dataset.seen = pend.map((v) => v.id).join(",");
+  if (!tAmtTouched) $("tAmt").value = plain(tickedTotal());
+  const tb = $("tBody");
+  tb.innerHTML = k.tops.length ? k.tops.map((t) => `<tr>
+      <td class="num" style="text-align:left">${esc(t.date)}</td><td>${esc(t.ref || "—")}${t.example ? ' <span class="pill neutral">Example</span>' : ""}<div class="small muted">${esc(t.note)}</div></td>
+      <td class="num">${t._n}</td><td class="num">${fmt(t.amount)}</td><td class="num">${t.amount - t._covered === 0 ? "0.00" : `<span class="pill warn">${fmt(t.amount - t._covered)}</span>`}</td>
+      <td style="white-space:nowrap">${confirmId === "t:" + t.id
+        ? `<span class="confirm">Delete? <button class="btn link danger" data-act="tdel" data-id="${t.id}">Yes</button><button class="btn link" data-act="nodel">No</button></span>`
+        : `<button class="btn link danger" data-act="task" data-id="${t.id}">Delete</button>`}</td></tr>`).join("")
+    : `<tr><td colspan="6" class="empty">No top-ups yet. When the custodian is reimbursed, record it here against the vouchers it covers.</td></tr>`;
+  $("tFoot").innerHTML = k.tops.length ? `<tr><td colspan="3">Total</td><td class="num">${fmt(k.T)}</td><td class="num">${fmt(k.X)}</td><td></td></tr>` : "";
+}
+const tickedIds = () => [...$("tList").querySelectorAll("input:checked")].map((i) => i.value);
+const tickedTotal = () => { const ids = new Set(tickedIds()); return S.vouchers.filter((v) => ids.has(v.id)).reduce((a, v) => a + v.gross, 0); };
+
+function renderCount(k) {
+  const tb = $("cBody");
+  if (!tb.dataset.built) {
+    tb.innerHTML = DENOMS.map((d) => `<tr><td>${d.label} <span class="kind">${d.kind}</span></td><td class="num"><input type="number" min="0" step="1" inputmode="numeric" id="q_${d.k}" data-k="${d.k}" aria-label="${d.label} quantity"></td><td class="num" id="a_${d.k}">0.00</td></tr>`).join("");
+    tb.dataset.built = "1"; fillCountForm();
+  }
+  let pieces = 0;
+  for (const d of DENOMS) { const q = parseInt(S.count.q?.[d.k], 10) || 0; pieces += q; $("a_" + d.k).textContent = fmt(q * d.v); }
+  $("cPieces").textContent = pieces ? pieces + " pcs" : "";
+  $("cTotal").textContent = fmt(k.C);
+  $("cTie").innerHTML = tieBox(k.D, `Counted ${fmt(k.C)} against book balance ${fmt(k.B)}`);
+}
+function tieBox(d, text) {
+  const cls = d === 0 ? "ok" : d < 0 ? "bad" : "warn";
+  const head = d === 0 ? "✓ Zero residual" : d < 0 ? `✗ Shortage of SAR ${fmt(-d)}` : `! Overage of SAR ${fmt(d)}`;
+  return `<div class="tie ${cls}"><span>${head}</span><span class="small" style="font-weight:500">${text}</span></div>`;
+}
+const ln = (op, label, amt, cls = "") => `<div class="ln ${cls}"><span class="op">${op}</span><span>${label}</span><span class="num">${fmt(amt)}</span></div>`;
+
+function renderRecon(k) {
+  $("rA").innerHTML = ln("", "Imprest float", k.F) + ln("+", `Top-ups received (${k.tops.length})`, k.T) + ln("−", `Vouchers paid (${k.vs.length})`, k.V)
+    + ln("=", "Book balance", k.B, "sub") + ln("", "Cash counted", k.C) + ln("Δ", "Difference (counted − book)", k.D, "res");
+  $("rATie").innerHTML = tieBox(k.D, k.D === 0 ? "Cash on hand agrees to the books." : "Record the explanation in the sign-off before closing.");
+  const lhs = k.C + k.U - k.X;
+  $("rB").innerHTML = ln("", "Cash counted", k.C) + ln("+", `Vouchers not yet reimbursed (${k.Un})`, k.U) + ln("−", "Top-ups not matched to vouchers", k.X)
+    + ln("=", "Accounted for", lhs, "sub") + ln("", "Imprest float", k.F) + ln("Δ", "Residual", lhs - k.F, "res");
+  $("rBTie").innerHTML = tieBox(lhs - k.F, "Cash plus vouchers should always make up the float.");
+  const cats = summary(k);
+  const catG = cats.reduce((a, c) => a + c.g, 0);
+  const chk = (label, a, b) => { const r = a - b; return `<div><span>${label}</span><span>${r === 0 ? '<span class="pill ok">✓ 0.00</span>' : `<span class="pill bad">✗ ${fmt(r)}</span>`}</span></div>`; };
+  $("rChecks").innerHTML = chk("Category totals − voucher register", catG, k.V)
+    + chk("Net + VAT − gross (all vouchers)", k.N + k.VAT, k.V)
+    + chk("Top-ups − (vouchers covered + unmatched)", k.T, k.linked + k.X)
+    + chk("Imprest residual − count difference", lhs - k.F, k.D)
+    + `<div><span>Vouchers with exceptions</span><span>${k.vs.filter((v) => v._exc.length).length ? `<span class="pill bad">${k.vs.filter((v) => v._exc.length).length}</span>` : '<span class="pill ok">None</span>'}</span></div>`;
+}
+function summary(k, onlyIds) {
+  const map = new Map();
+  for (const c of S.settings.categories || []) map.set(c.name, { name: c.name, acc: c.account, n: 0, net: 0, vat: 0, g: 0 });
+  for (const v of k.vs) {
+    if (onlyIds && !onlyIds.has(v.id)) continue;
+    if (!map.has(v.category)) map.set(v.category, { name: v.category, acc: "", n: 0, net: 0, vat: 0, g: 0 });
+    const r = map.get(v.category); r.n++; r.net += v._net; r.vat += v._vat; r.g += v.gross;
+  }
+  return [...map.values()];
+}
+function renderReports(k) {
+  const cats = summary(k).filter((c) => c.n);
+  $("repBody").innerHTML = cats.length ? cats.map((c) => `<tr><td>${esc(c.name)}</td><td>${esc(c.acc || "—")}</td><td class="num">${c.n}</td><td class="num">${fmt(c.net)}</td><td class="num">${fmt(c.vat)}</td><td class="num">${fmt(c.g)}</td></tr>`).join("")
+    : `<tr><td colspan="6" class="empty">The summary fills in as vouchers are recorded.</td></tr>`;
+  const t = cats.reduce((a, c) => ({ n: a.n + c.n, net: a.net + c.net, vat: a.vat + c.vat, g: a.g + c.g }), { n: 0, net: 0, vat: 0, g: 0 });
+  $("repFoot").innerHTML = cats.length ? `<tr><td colspan="2">Total</td><td class="num">${t.n}</td><td class="num">${fmt(t.net)}</td><td class="num">${fmt(t.vat)}</td><td class="num">${fmt(t.g)}</td></tr>` : "";
+  $("repCheck").innerHTML = t.g === k.V ? `<span class="pill ok">✓ Agrees to register ${fmt(k.V)}</span>` : `<span class="pill bad">✗ Differs from register by ${fmt(t.g - k.V)}</span>`;
+
+  const sel = $("jeSel"); const cur = sel.value;
+  sel.innerHTML = `<option value="pending">Pending claim (${k.Un} vouchers)</option>` + k.tops.map((t) => `<option value="${t.id}">Top-up ${esc(t.date)} ${esc(t.ref || "")}</option>`).join("");
+  sel.value = [...sel.options].some((o) => o.value === cur) ? cur : "pending";
+  const je = journal(k, sel.value);
+  $("jeBody").innerHTML = je.lines.length ? je.lines.map((l) => `<tr><td>${esc(l.acc || "—")}</td><td>${esc(l.desc)}</td><td class="num">${l.dr ? fmt(l.dr) : ""}</td><td class="num">${l.cr ? fmt(l.cr) : ""}</td></tr>`).join("")
+    : `<tr><td colspan="4" class="empty">Nothing to post: no vouchers in this selection.</td></tr>`;
+  $("jeFoot").innerHTML = je.lines.length ? `<tr><td colspan="2">Totals ${je.dr === je.cr ? '<span class="pill ok">✓ Balanced</span>' : `<span class="pill bad">✗ Out by ${fmt(je.dr - je.cr)}</span>`}</td><td class="num">${fmt(je.dr)}</td><td class="num">${fmt(je.cr)}</td></tr>` : "";
+}
+function journal(k, src) {
+  let ids, top = null;
+  if (src === "pending") ids = new Set(k.vs.filter((v) => !v._reimbursed).map((v) => v.id));
+  else { top = k.tops.find((t) => t.id === src); ids = new Set(k.vs.filter((v) => v.topupId === src).map((v) => v.id)); }
+  const cats = summary(k, ids).filter((c) => c.n);
+  const lines = cats.map((c) => ({ acc: c.acc, desc: `${c.name} (${c.n})`, dr: c.net, cr: 0 }));
+  const vat = cats.reduce((a, c) => a + c.vat, 0), gross = cats.reduce((a, c) => a + c.g, 0);
+  if (vat) lines.push({ acc: S.settings.vatAccount, desc: "Input VAT 15%", dr: vat, cr: 0 });
+  if (gross) lines.push({ acc: S.settings.bankAccount, desc: top ? `Top-up ${top.ref || top.date}` : "Petty cash replenishment", dr: 0, cr: gross });
+  if (top && top.amount !== gross) {
+    const d = top.amount - gross;
+    lines.push({ acc: "Petty cash float", desc: "Float change (top-up not matched to vouchers)", dr: d > 0 ? d : 0, cr: 0 });
+    lines.push({ acc: S.settings.bankAccount, desc: "Float change", dr: d < 0 ? -d : 0, cr: d > 0 ? d : 0 });
+  }
+  const filtered = lines.filter((l) => l.dr || l.cr);
+  return { lines: filtered, dr: filtered.reduce((a, l) => a + l.dr, 0), cr: filtered.reduce((a, l) => a + l.cr, 0) };
+}
+function renderCats() {
+  const cats = S.settings.categories || [];
+  const used = new Set(S.vouchers.map((v) => v.category));
+  $("catBody").innerHTML = cats.map((c, i) => `<tr><td>${esc(c.name)}</td><td><input type="text" value="${esc(c.account)}" data-cat="${i}" aria-label="GL account for ${esc(c.name)}"></td><td>${used.has(c.name) ? '<span class="small muted">In use</span>' : `<button class="btn link danger" data-act="catdel" data-i="${i}">Remove</button>`}</td></tr>`).join("");
+  const sel = $("vCat"), cur = sel.value;
+  sel.innerHTML = cats.map((c) => `<option>${esc(c.name)}</option>`).join("");
+  if (cats.some((c) => c.name === cur)) sel.value = cur;
+}
+
+/* ---------- forms ---------- */
+let editingId = null, confirmId = null, tAmtTouched = false;
+function fillForms() {
+  const st = S.settings;
+  if (!document.activeElement || !$("gForm").contains(document.activeElement)) {
+    $("gEntity").value = st.entity || ""; $("gCust").value = st.custodian || ""; $("gFloat").value = plain(st.float || 0);
+    $("gLimit").value = plain(st.limit || 0); $("gFrom").value = st.from || ""; $("gTo").value = st.to || "";
+    $("gVatAcc").value = st.vatAccount || ""; $("gBankAcc").value = st.bankAccount || "";
+  }
+  if (!$("sForm").contains(document.activeElement)) {
+    const so = st.signoff || {};
+    $("sCust").value = so.cust || st.custodian || ""; $("sCustDate").value = so.custDate || ""; $("sRev").value = so.rev || "";
+    $("sRevDate").value = so.revDate || ""; $("sNote").value = so.note || "";
+  }
+}
+function fillCountForm() {
+  for (const d of DENOMS) { const el = $("q_" + d.k); if (el && el !== document.activeElement) el.value = S.count.q?.[d.k] || ""; }
+  for (const [id, key] of [["cDate", "date"], ["cBy", "by"], ["cWit", "wit"], ["cIou", "iou"]]) if ($(id) !== document.activeElement) $(id).value = S.count[key] || "";
+}
+function updateSplit() {
+  const g = toH($("vGross").value);
+  if (isNaN(g)) { $("vSplit").textContent = "Net 0.00 · VAT 0.00"; return; }
+  const s = split(g, $("vVat").checked);
+  $("vSplit").textContent = `Net ${fmt(s.net)} · VAT ${fmt(s.vat)}`;
+}
+function resetVoucherForm() {
+  editingId = null; $("vForm").reset(); $("vDate").value = today(); $("vVat").checked = true; $("vReceipt").checked = true;
+  $("vSave").textContent = "Add voucher"; $("vFormTitle").textContent = "New voucher"; $("vCancel").hidden = true; $("vErr").textContent = "";
+  updateSplit(); vatHint(); render();
+}
+function vatHint() {
+  const s = $("vVatNo").value.trim(), h = $("vVatNoHint");
+  if (!s) { h.textContent = $("vVat").checked ? "Required when VAT is charged" : "15 digits, starts and ends with 3"; h.className = "hint"; return; }
+  h.textContent = vatNoOk(s) ? "Valid format" : "Must be 15 digits, starting and ending with 3"; h.className = vatNoOk(s) ? "hint" : "hint err";
+}
+
+$("vGross").addEventListener("input", updateSplit);
+$("vVat").addEventListener("change", () => { updateSplit(); vatHint(); });
+$("vVatNo").addEventListener("input", () => { $("vVatNo").value = $("vVatNo").value.replace(/\D/g, ""); vatHint(); });
+$("vCancel").addEventListener("click", resetVoucherForm);
+$("vFilter").addEventListener("change", render);
+$("jeSel").addEventListener("change", render);
+$("vForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const gross = toH($("vGross").value);
+  if (isNaN(gross) || gross <= 0) { $("vErr").textContent = "Enter the gross amount as a positive number, e.g. 115.00"; return; }
+  if (!$("vPayee").value.trim()) { $("vErr").textContent = "Enter who was paid."; return; }
+  const old = S.vouchers.find((v) => v.id === editingId);
+  const v = {
+    id: editingId || uid(), no: old ? old.no : nextNo(), date: $("vDate").value, payee: $("vPayee").value.trim(),
+    category: $("vCat").value, desc: $("vDesc").value.trim(), vatApplicable: $("vVat").checked, vatNo: $("vVatNo").value.trim(),
+    gross, receipt: $("vReceipt").checked, topupId: old ? old.topupId || null : null, example: false,
+  };
+  try { await Store.saveVoucher(v); toast((old ? "Updated " : "Added ") + vno(v.no)); resetVoucherForm(); }
+  catch (err) { $("vErr").textContent = "Not saved: " + (err?.message || err?.code || "unknown error"); }
+});
+
+$("tList").addEventListener("change", () => { tAmtTouched = false; $("tAmt").value = plain(tickedTotal()); });
+$("tAmt").addEventListener("input", () => { tAmtTouched = true; });
+$("tToFloat").addEventListener("click", () => {
+  const k = calc(); const need = k.F - k.B;
+  $("tAmt").value = plain(Math.max(0, need)); tAmtTouched = true;
+  toast(need > 0 ? `Float − book balance = ${fmt(need)}` : "The box is already at or above the float");
+});
+$("tForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const amount = toH($("tAmt").value);
+  if (isNaN(amount) || amount <= 0) { $("tErr").textContent = "Enter the amount received."; return; }
+  const ids = tickedIds();
+  const t = { id: uid(), date: $("tDate").value || today(), ref: $("tRef").value.trim(), amount, note: $("tNote").value.trim(), example: false };
+  try {
+    await Store.saveTopup(t);
+    for (const id of ids) { const v = S.vouchers.find((x) => x.id === id); if (v) await Store.saveVoucher({ ...strip(v), topupId: t.id }); }
+    $("tForm").reset(); $("tDate").value = today(); $("tErr").textContent = ""; tAmtTouched = false; $("tList").dataset.init = "";
+    toast(`Top-up of ${fmt(amount)} recorded against ${ids.length} voucher${ids.length === 1 ? "" : "s"}`); render();
+  } catch (err) { $("tErr").textContent = "Not saved: " + (err?.message || err?.code || "unknown error"); }
+});
+const strip = (o) => Object.fromEntries(Object.entries(o).filter(([k]) => !k.startsWith("_")));
+
+let countTimer = null;
+function queueCount() {
+  clearTimeout(countTimer);
+  countTimer = setTimeout(async () => {
+    const q = {};
+    for (const d of DENOMS) { const n = parseInt($("q_" + d.k).value, 10); if (n > 0) q[d.k] = n; }
+    const c = { q, date: $("cDate").value, by: $("cBy").value.trim(), wit: $("cWit").value.trim(), iou: $("cIou").value.trim() };
+    try { await Store.saveCount(c); } catch (err) { toast("Count not saved: " + (err?.message || err?.code)); }
+  }, 500);
+}
+$("cBody").addEventListener("input", (e) => {
+  const k = e.target.dataset.k; if (!k) return;
+  S.count = { ...S.count, q: { ...S.count.q, [k]: parseInt(e.target.value, 10) || 0 } };
+  render(); queueCount();
+});
+$("cForm").addEventListener("input", queueCount);
+$("cForm").addEventListener("submit", (e) => e.preventDefault());
+let zeroArmed = false;
+$("cZero").addEventListener("click", () => {
+  if (!zeroArmed) { zeroArmed = true; $("cZero").textContent = "Click again to clear"; setTimeout(() => { zeroArmed = false; $("cZero").textContent = "Reset count"; }, 3000); return; }
+  zeroArmed = false; $("cZero").textContent = "Reset count";
+  for (const d of DENOMS) $("q_" + d.k).value = "";
+  S.count = { ...S.count, q: {} }; render(); queueCount();
+});
+
+$("sForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    await Store.saveSettings({ signoff: { cust: $("sCust").value.trim(), custDate: $("sCustDate").value, rev: $("sRev").value.trim(), revDate: $("sRevDate").value, note: $("sNote").value.trim() } });
+    toast("Sign-off saved");
+  } catch (err) { toast("Not saved: " + (err?.message || err?.code)); }
+});
+$("gForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fl = toH($("gFloat").value), lim = toH($("gLimit").value || "0");
+  if (isNaN(fl) || fl <= 0) { $("gErr").textContent = "Enter the imprest float, e.g. 5,000.00"; return; }
+  if (isNaN(lim)) { $("gErr").textContent = "Enter the voucher limit as a number, or 0 for none."; return; }
+  if ($("gFrom").value && $("gTo").value && $("gFrom").value > $("gTo").value) { $("gErr").textContent = "Period start is after period end."; return; }
+  $("gErr").textContent = "";
+  try {
+    await Store.saveSettings({ entity: $("gEntity").value.trim(), custodian: $("gCust").value.trim(), float: fl, limit: lim, from: $("gFrom").value, to: $("gTo").value, vatAccount: $("gVatAcc").value.trim(), bankAccount: $("gBankAcc").value.trim() });
+    document.activeElement?.blur(); fillForms(); toast("Fund settings saved");
+  } catch (err) { $("gErr").textContent = "Not saved: " + (err?.message || err?.code); }
+});
+$("catForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = $("catName").value.trim(); if (!name) return;
+  const cats = S.settings.categories || [];
+  if (cats.some((c) => c.name.toLowerCase() === name.toLowerCase())) { toast("That category already exists"); return; }
+  await Store.saveSettings({ categories: [...cats, { name, account: $("catAcc").value.trim() }] });
+  $("catForm").reset(); toast("Category added");
+});
+$("catBody").addEventListener("change", async (e) => {
+  const i = e.target.dataset.cat; if (i === undefined) return;
+  const cats = clean(S.settings.categories); cats[i].account = e.target.value.trim();
+  await Store.saveSettings({ categories: cats }); toast("GL account updated");
+});
+
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const id = b.dataset.id, act = b.dataset.act;
+  if (act === "vedit") {
+    const v = S.vouchers.find((x) => x.id === id); if (!v) return;
+    editingId = id; $("vDate").value = v.date; $("vPayee").value = v.payee; $("vCat").value = v.category; $("vDesc").value = v.desc || "";
+    $("vVat").checked = !!v.vatApplicable; $("vVatNo").value = v.vatNo || ""; $("vGross").value = plain(v.gross); $("vReceipt").checked = !!v.receipt;
+    $("vSave").textContent = "Save changes"; $("vFormTitle").textContent = "Edit voucher"; $("vCancel").hidden = false;
+    updateSplit(); vatHint(); render(); $("vForm").scrollIntoView({ behavior: "smooth", block: "start" });
+  } else if (act === "vask") { confirmId = "v:" + id; render(); }
+  else if (act === "task") { confirmId = "t:" + id; render(); }
+  else if (act === "nodel") { confirmId = null; render(); }
+  else if (act === "vdel") {
+    confirmId = null; const v = S.vouchers.find((x) => x.id === id);
+    await Store.deleteVoucher(id); if (editingId === id) resetVoucherForm(); toast("Deleted " + vno(v?.no)); render();
+  } else if (act === "tdel") {
+    confirmId = null;
+    for (const v of S.vouchers.filter((x) => x.topupId === id)) await Store.saveVoucher({ ...strip(v), topupId: null });
+    await Store.deleteTopup(id); toast("Top-up deleted; its vouchers are pending again"); render();
+  } else if (act === "catdel") {
+    const cats = clean(S.settings.categories); cats.splice(+b.dataset.i, 1);
+    await Store.saveSettings({ categories: cats }); toast("Category removed");
+  }
+});
+
+/* example data clear (two-step) */
+let clearArmed = false;
+$("btnClearExamples").addEventListener("click", async () => {
+  if (!clearArmed) { clearArmed = true; $("btnClearExamples").textContent = "Click again to delete examples"; setTimeout(() => { clearArmed = false; $("btnClearExamples").textContent = "Clear example data"; }, 4000); return; }
+  clearArmed = false; $("btnClearExamples").textContent = "Clearing…";
+  for (const v of S.vouchers.filter((x) => x.example)) await Store.deleteVoucher(v.id);
+  for (const t of S.topups.filter((x) => x.example)) await Store.deleteTopup(t.id);
+  if (S.count.example) await Store.saveCount({ q: {}, date: "", by: "", wit: "", iou: "" });
+  if (S.settings.example) await Store.saveSettings({ example: false, entity: "", custodian: "", signoff: DEFAULT_SETTINGS.signoff });
+  $("btnClearExamples").textContent = "Clear example data"; fillForms(); fillCountForm(); render(); toast("Example data cleared");
+});
+
+/* ---------- tabs ---------- */
+function showTab(name) {
+  if (!document.querySelector(`[data-panel="${name}"]`)) name = "vouchers";
+  document.querySelectorAll("[data-panel]").forEach((p) => { p.hidden = p.dataset.panel !== name; });
+  document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
+  try { localStorage.setItem("pettycash.tab", name); } catch { /* ignore */ }
+}
+document.querySelector("nav.tabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (b) showTab(b.dataset.tab); });
+
+/* ---------- exports ---------- */
+const csvCell = (x) => { const s = String(x ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+const csv = (rows) => "﻿" + rows.map((r) => r.map(csvCell).join(",")).join("\r\n");
+const stamp = () => today();
+$("xCsvV").addEventListener("click", () => {
+  const k = calc();
+  saveFile(`petty-cash-vouchers-${stamp()}.csv`, csv([["Voucher", "Date", "Payee", "Supplier VAT No", "Category", "GL account", "Description", "VAT applicable", "Net", "VAT", "Gross", "Receipt", "Reimbursed", "Exceptions"],
+    ...k.vs.map((v) => [vno(v.no), v.date, v.payee, v.vatNo, v.category, catAcc(v.category), v.desc, v.vatApplicable ? "Yes" : "No", plain(v._net), plain(v._vat), plain(v.gross), v.receipt ? "Yes" : "No", v._reimbursed ? "Yes" : "No", v._exc.join("; ")])]), "text/csv");
+});
+$("xCsvS").addEventListener("click", () => {
+  const k = calc(); const cats = summary(k).filter((c) => c.n);
+  saveFile(`petty-cash-summary-${stamp()}.csv`, csv([["Category", "GL account", "Vouchers", "Net", "Input VAT", "Gross"], ...cats.map((c) => [c.name, c.acc, c.n, plain(c.net), plain(c.vat), plain(c.g)])]), "text/csv");
+});
+$("xCsvT").addEventListener("click", () => {
+  const k = calc();
+  saveFile(`petty-cash-topups-${stamp()}.csv`, csv([["Date", "Reference", "Note", "Vouchers covered", "Amount", "Covered", "Unmatched"], ...k.tops.map((t) => [t.date, t.ref, t.note, t._n, plain(t.amount), plain(t._covered), plain(t.amount - t._covered)])]), "text/csv");
+});
+$("xCsvC").addEventListener("click", () => {
+  saveFile(`petty-cash-count-${stamp()}.csv`, csv([["Denomination", "Type", "Value", "Quantity", "Amount"], ...DENOMS.map((d) => { const q = parseInt(S.count.q?.[d.k], 10) || 0; return [d.label, d.kind, plain(d.v), q, plain(q * d.v)]; })]), "text/csv");
+});
+
+let excelLoading = null;
+function loadExcelJS() {
+  if (window.ExcelJS) return Promise.resolve();
+  return excelLoading ||= new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js";
+    s.onload = () => res(); s.onerror = () => { excelLoading = null; rej(new Error("Could not load the Excel library")); };
+    document.head.appendChild(s);
+  });
+}
+$("xXlsx").addEventListener("click", async () => {
+  const btn = $("xXlsx"); btn.disabled = true; btn.textContent = "Building workbook…";
+  try { await loadExcelJS(); const buf = await buildWorkbook(); await saveFile(`petty-cash-${stamp()}.xlsx`, new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })); }
+  catch (err) { toast("Workbook not created: " + (err?.message || err)); }
+  finally { btn.disabled = false; btn.textContent = "Excel workbook (.xlsx)"; }
+});
+
+async function buildWorkbook() {
+  const k = calc(), st = S.settings;
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "Petty Cash Imprest"; wb.created = new Date();
+  wb.calcProperties = { fullCalcOnLoad: true };
+  const F = (n) => n / 100;
+  const NUM = "#,##0.00;[Red](#,##0.00);\"-\"";
+  const HEAD_FILL = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0D5C4A" } };
+  const TOT_FILL = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEEF2F0" } };
+  const RED = { font: { color: { argb: "FF9C0006" } }, fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFFFC7CE" } } };
+  const AMBER = { font: { color: { argb: "FF9C5700" } }, fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFFFEB9C" } } };
+  const GREEN = { font: { color: { argb: "FF006100" } }, fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFC6EFCE" } } };
+  const thin = { style: "thin", color: { argb: "FFBFBFBF" } };
+  const title = (ws, t, cols) => {
+    ws.getCell("A1").value = st.entity || "Entity name"; ws.getCell("A1").font = { name: "Arial", size: 13, bold: true };
+    ws.getCell("A2").value = t; ws.getCell("A2").font = { name: "Arial", size: 11, bold: true };
+    ws.getCell("A3").value = `Period: ${st.from || "—"} to ${st.to || "—"} · Custodian: ${st.custodian || "—"} · Amounts in SAR`;
+    ws.getCell("A3").font = { name: "Arial", size: 9, italic: true };
+    ws.mergeCells(1, 1, 1, cols); ws.mergeCells(2, 1, 2, cols); ws.mergeCells(3, 1, 3, cols);
+  };
+  const header = (ws, row, labels) => {
+    const r = ws.getRow(row); r.values = labels;
+    r.eachCell((c) => { c.font = { name: "Arial", size: 10, bold: true, color: { argb: "FFFFFFFF" } }; c.fill = HEAD_FILL; c.alignment = { vertical: "middle", wrapText: true }; c.border = { top: thin, bottom: thin, left: thin, right: thin }; });
+    r.height = 28;
+  };
+  const totalRow = (ws, row, n) => { const r = ws.getRow(row); for (let c = 1; c <= n; c++) { const cell = r.getCell(c); cell.font = { name: "Arial", size: 10, bold: true }; cell.fill = TOT_FILL; cell.border = { top: { style: "thin" }, bottom: { style: "double" } }; } };
+  const arial = (ws) => ws.eachRow({ includeEmpty: false }, (r) => r.eachCell({ includeEmpty: false }, (c) => { c.font = { name: "Arial", size: 10, ...(c.font || {}), name: "Arial" }; }));
+
+  /* Vouchers */
+  const wv = wb.addWorksheet("Vouchers", { views: [{ state: "frozen", ySplit: 5 }] });
+  title(wv, "Petty cash voucher register", 14);
+  header(wv, 5, ["Voucher", "Date", "Payee", "Supplier VAT No.", "Category", "GL account", "Description", "VAT 15%", "Gross", "Net", "VAT", "Receipt", "Reimbursed", "Exceptions"]);
+  let r = 6;
+  for (const v of k.vs) {
+    const row = wv.getRow(r);
+    row.values = [vno(v.no), v.date ? new Date(v.date + "T00:00:00Z") : "", v.payee, v.vatNo || "", v.category, catAcc(v.category), v.desc || "", v.vatApplicable ? "Yes" : "No", F(v.gross),
+      { formula: `IF(H${r}="Yes",ROUND(I${r}/1.15,2),I${r})`, result: F(v._net) }, { formula: `I${r}-J${r}`, result: F(v._vat) },
+      v.receipt ? "Yes" : "No", v._reimbursed ? "Yes" : "No", v._exc.join("; ")];
+    row.getCell(2).numFmt = "dd-mmm-yyyy"; row.getCell(4).numFmt = "@";
+    r++;
+  }
+  const vFirst = 6, vLast = Math.max(r - 1, 6), vTot = r + 0;
+  if (!k.vs.length) r = 7;
+  const vt = wv.getRow(r);
+  vt.getCell(1).value = "Total";
+  for (const [col, val] of [["I", k.V], ["J", k.N], ["K", k.VAT]]) vt.getCell(col).value = { formula: `SUM(${col}${vFirst}:${col}${vLast})`, result: F(val) };
+  totalRow(wv, r, 14);
+  const vTotRow = r;
+  wv.getRow(r + 1).getCell(1).value = "Check: net + VAT − gross";
+  wv.getRow(r + 1).getCell(9).value = { formula: `J${vTotRow}+K${vTotRow}-I${vTotRow}`, result: 0 };
+  wv.getRow(r + 1).getCell(1).font = { name: "Arial", italic: true };
+  ["I", "J", "K"].forEach((c) => { for (let i = vFirst; i <= r + 1; i++) wv.getCell(`${c}${i}`).numFmt = NUM; });
+  wv.getCell(`I${r + 1}`).numFmt = NUM;
+  if (k.vs.length) wv.addConditionalFormatting({ ref: `A${vFirst}:N${vLast}`, rules: [{ type: "expression", formulae: [`LEN($N${vFirst})>0`], style: RED, priority: 1 }] });
+  wv.addConditionalFormatting({ ref: `I${r + 1}`, rules: [{ type: "expression", formulae: [`ROUND(I${r + 1},2)<>0`], style: RED, priority: 2 }, { type: "expression", formulae: [`ROUND(I${r + 1},2)=0`], style: GREEN, priority: 3 }] });
+  [11, 12, 26, 18, 26, 11, 32, 9, 13, 13, 12, 9, 11, 34].forEach((w, i) => { wv.getColumn(i + 1).width = w; });
+  void vTot;
+
+  /* Summary */
+  const ws = wb.addWorksheet("Summary");
+  title(ws, "Summary by category", 6);
+  header(ws, 5, ["Category", "GL account", "Vouchers", "Net", "Input VAT", "Gross"]);
+  const cats = summary(k);
+  r = 6;
+  const rng = (c) => `Vouchers!$${c}$${vFirst}:$${c}$${vLast}`;
+  for (const c of cats) {
+    ws.getRow(r).values = [c.name, c.acc, { formula: `COUNTIF(${rng("E")},A${r})`, result: c.n }, { formula: `SUMIFS(${rng("J")},${rng("E")},A${r})`, result: F(c.net) },
+      { formula: `SUMIFS(${rng("K")},${rng("E")},A${r})`, result: F(c.vat) }, { formula: `SUMIFS(${rng("I")},${rng("E")},A${r})`, result: F(c.g) }];
+    r++;
+  }
+  const sLast = r - 1;
+  ws.getRow(r).values = ["Total", "", { formula: `SUM(C6:C${sLast})`, result: k.vs.length }, { formula: `SUM(D6:D${sLast})`, result: F(k.N) }, { formula: `SUM(E6:E${sLast})`, result: F(k.VAT) }, { formula: `SUM(F6:F${sLast})`, result: F(k.V) }];
+  totalRow(ws, r, 6);
+  const sTot = r;
+  ws.getRow(r + 1).values = ["Difference to voucher register", "", "", { formula: `D${sTot}-Vouchers!J${vTotRow}`, result: 0 }, { formula: `E${sTot}-Vouchers!K${vTotRow}`, result: 0 }, { formula: `F${sTot}-Vouchers!I${vTotRow}`, result: 0 }];
+  for (let i = 6; i <= r + 1; i++) ["D", "E", "F"].forEach((c) => { ws.getCell(`${c}${i}`).numFmt = NUM; });
+  ws.addConditionalFormatting({ ref: `D${r + 1}:F${r + 1}`, rules: [{ type: "expression", formulae: [`ROUND(D${r + 1},2)<>0`], style: RED, priority: 1 }, { type: "expression", formulae: [`ROUND(D${r + 1},2)=0`], style: GREEN, priority: 2 }] });
+  [32, 13, 10, 15, 15, 15].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+
+  /* Top-ups */
+  const wt = wb.addWorksheet("Top-ups");
+  title(wt, "Top-ups received", 6);
+  header(wt, 5, ["Date", "Reference", "Note", "Amount", "Vouchers covered", "Unmatched"]);
+  r = 6;
+  for (const t of k.tops) {
+    wt.getRow(r).values = [t.date ? new Date(t.date + "T00:00:00Z") : "", t.ref || "", t.note || "", F(t.amount), F(t._covered), { formula: `D${r}-E${r}`, result: F(t.amount - t._covered) }];
+    wt.getCell(`A${r}`).numFmt = "dd-mmm-yyyy"; r++;
+  }
+  const tLast = Math.max(r - 1, 6); if (!k.tops.length) r = 7;
+  wt.getRow(r).values = ["Total", "", "", { formula: `SUM(D6:D${tLast})`, result: F(k.T) }, { formula: `SUM(E6:E${tLast})`, result: F(k.linked) }, { formula: `SUM(F6:F${tLast})`, result: F(k.X) }];
+  totalRow(wt, r, 6);
+  const tTot = r;
+  for (let i = 6; i <= r; i++) ["D", "E", "F"].forEach((c) => { wt.getCell(`${c}${i}`).numFmt = NUM; });
+  wt.addConditionalFormatting({ ref: `F6:F${tLast}`, rules: [{ type: "expression", formulae: ["ROUND(F6,2)<>0"], style: AMBER, priority: 1 }] });
+  [13, 18, 30, 15, 17, 14].forEach((w, i) => { wt.getColumn(i + 1).width = w; });
+
+  /* Cash count */
+  const wc = wb.addWorksheet("Cash Count");
+  title(wc, "Physical cash count", 5);
+  header(wc, 5, ["Denomination", "Type", "Face value", "Quantity", "Amount"]);
+  r = 6;
+  for (const d of DENOMS) { const q = parseInt(S.count.q?.[d.k], 10) || 0; wc.getRow(r).values = [d.label, d.kind, F(d.v), q, { formula: `C${r}*D${r}`, result: F(q * d.v) }]; r++; }
+  wc.getRow(r).values = ["Total counted", "", "", { formula: `SUM(D6:D${r - 1})`, result: 0 }, { formula: `SUM(E6:E${r - 1})`, result: F(k.C) }];
+  totalRow(wc, r, 5);
+  const cTot = r;
+  for (let i = 6; i <= r; i++) { wc.getCell(`C${i}`).numFmt = NUM; wc.getCell(`E${i}`).numFmt = NUM; }
+  wc.getRow(r + 2).values = ["Count date", S.count.date || ""]; wc.getRow(r + 3).values = ["Counted by", S.count.by || ""]; wc.getRow(r + 4).values = ["Witnessed by", S.count.wit || ""]; wc.getRow(r + 5).values = ["IOUs / advances", S.count.iou || ""];
+  [20, 13, 13, 11, 15].forEach((w, i) => { wc.getColumn(i + 1).width = w; });
+
+  /* Reconciliation */
+  const wr = wb.addWorksheet("Reconciliation");
+  title(wr, "Petty cash reconciliation", 3);
+  header(wr, 5, ["", "Item", "SAR"]);
+  const lines = [
+    ["", "Imprest float", F(k.F)],
+    ["+", "Top-ups received", { formula: `'Top-ups'!D${tTot}`, result: F(k.T) }],
+    ["−", "Vouchers paid (gross)", { formula: `Vouchers!I${vTotRow}`, result: F(k.V) }],
+    ["=", "Book balance", { formula: "C6+C7-C8", result: F(k.B) }],
+    ["", "Cash counted", { formula: `'Cash Count'!E${cTot}`, result: F(k.C) }],
+    ["Δ", "Difference (counted − book)", { formula: "C10-C9", result: F(k.D) }],
+    ["", "Status", { formula: `IF(ROUND(C11,2)=0,"Zero residual",IF(C11<0,"Shortage","Overage"))`, result: k.D === 0 ? "Zero residual" : k.D < 0 ? "Shortage" : "Overage" }],
+    ["", "", ""],
+    ["", "Imprest check", ""],
+    ["", "Cash counted", { formula: "C10", result: F(k.C) }],
+    ["+", "Vouchers not yet reimbursed", { formula: `SUMIFS(Vouchers!$I$${vFirst}:$I$${vLast},Vouchers!$M$${vFirst}:$M$${vLast},"No")`, result: F(k.U) }],
+    ["−", "Top-ups not matched to vouchers", { formula: `'Top-ups'!F${tTot}`, result: F(k.X) }],
+    ["=", "Accounted for", { formula: "C15+C16-C17", result: F(k.C + k.U - k.X) }],
+    ["−", "Imprest float", { formula: "C6", result: F(k.F) }],
+    ["Δ", "Residual", { formula: "C18-C19", result: F(k.C + k.U - k.X - k.F) }],
+    ["", "Cross-check: residual − difference", { formula: "C20-C11", result: 0 }],
+  ];
+  lines.forEach((l, i) => { wr.getRow(6 + i).values = l; });
+  for (let i = 6; i <= 21; i++) { wr.getCell(`C${i}`).numFmt = NUM; wr.getCell(`A${i}`).alignment = { horizontal: "center" }; }
+  [9, 18].forEach((i) => totalRow(wr, i, 3));
+  wr.getCell("B14").font = { name: "Arial", bold: true };
+  wr.addConditionalFormatting({ ref: "C11", rules: [{ type: "expression", formulae: ["ROUND(C11,2)<0"], style: RED, priority: 1 }, { type: "expression", formulae: ["ROUND(C11,2)>0"], style: AMBER, priority: 2 }, { type: "expression", formulae: ["ROUND(C11,2)=0"], style: GREEN, priority: 3 }] });
+  wr.addConditionalFormatting({ ref: "C12", rules: [{ type: "expression", formulae: ['C12="Shortage"'], style: RED, priority: 4 }, { type: "expression", formulae: ['C12="Overage"'], style: AMBER, priority: 5 }, { type: "expression", formulae: ['C12="Zero residual"'], style: GREEN, priority: 6 }] });
+  wr.addConditionalFormatting({ ref: "C20:C21", rules: [{ type: "expression", formulae: ["ROUND(C20,2)<>0"], style: RED, priority: 7 }] });
+  const so = st.signoff || {};
+  wr.getRow(23).values = ["", "Custodian", `${so.cust || ""}  ${so.custDate || ""}`];
+  wr.getRow(24).values = ["", "Reviewed by", `${so.rev || ""}  ${so.revDate || ""}`];
+  wr.getRow(25).values = ["", "Explanation of difference", so.note || ""];
+  [5, 40, 22].forEach((w, i) => { wr.getColumn(i + 1).width = w; });
+
+  /* Journal (pending claim) */
+  const wj = wb.addWorksheet("Journal");
+  title(wj, "Replenishment journal entry: vouchers not yet reimbursed", 4);
+  header(wj, 5, ["Account", "Description", "Debit", "Credit"]);
+  r = 6;
+  const pendCats = summary(k).filter((c) => c.n);
+  const pr = (c) => `Vouchers!$${c}$${vFirst}:$${c}$${vLast}`;
+  const pend = new Set(k.vs.filter((v) => !v._reimbursed).map((v) => v.id));
+  const pc = summary(k, pend);
+  for (const c of pendCats) {
+    const p = pc.find((x) => x.name === c.name) || { net: 0 };
+    wj.getRow(r).values = [c.acc, c.name, { formula: `SUMIFS(${pr("J")},${pr("E")},"${c.name.replace(/"/g, '""')}",${pr("M")},"No")`, result: F(p.net) }, ""]; r++;
+  }
+  const pvat = pc.reduce((a, c) => a + c.vat, 0), pg = pc.reduce((a, c) => a + c.g, 0);
+  wj.getRow(r).values = [st.vatAccount, "Input VAT 15%", { formula: `SUMIFS(${pr("K")},${pr("M")},"No")`, result: F(pvat) }, ""]; r++;
+  wj.getRow(r).values = [st.bankAccount, "Petty cash replenishment", "", { formula: `SUMIFS(${pr("I")},${pr("M")},"No")`, result: F(pg) }]; r++;
+  wj.getRow(r).values = ["Total", "", { formula: `SUM(C6:C${r - 1})`, result: F(pg) }, { formula: `SUM(D6:D${r - 1})`, result: F(pg) }];
+  totalRow(wj, r, 4);
+  wj.getRow(r + 1).values = ["Check: debit − credit", "", { formula: `C${r}-D${r}`, result: 0 }, ""];
+  for (let i = 6; i <= r + 1; i++) { wj.getCell(`C${i}`).numFmt = NUM; wj.getCell(`D${i}`).numFmt = NUM; }
+  wj.addConditionalFormatting({ ref: `C${r + 1}`, rules: [{ type: "expression", formulae: [`ROUND(C${r + 1},2)<>0`], style: RED, priority: 1 }, { type: "expression", formulae: [`ROUND(C${r + 1},2)=0`], style: GREEN, priority: 2 }] });
+  [18, 36, 15, 15].forEach((w, i) => { wj.getColumn(i + 1).width = w; });
+
+  for (const sh of [wv, ws, wt, wc, wr, wj]) { arial(sh); sh.pageSetup = { orientation: sh === wv ? "landscape" : "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 }; }
+  return wb.xlsx.writeBuffer();
+}
+
+/* ---------- backup ---------- */
+$("bkSave").addEventListener("click", () => {
+  const data = { app: "petty-cash-imprest", version: 1, saved: new Date().toISOString(), settings: S.settings, vouchers: S.vouchers.map(strip), topups: S.topups.map(strip), count: S.count };
+  saveFile(`petty-cash-backup-${stamp()}.json`, JSON.stringify(data, null, 2), "application/json");
+});
+let pendingRestore = null;
+$("bkFile").addEventListener("change", async (e) => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    if (j.app !== "petty-cash-imprest" || !Array.isArray(j.vouchers)) throw new Error("not a petty cash backup");
+    pendingRestore = j;
+    $("bkConfirm").innerHTML = `<span class="confirm">Replace the register with ${j.vouchers.length} vouchers and ${(j.topups || []).length} top-ups from ${esc(f.name)}? <button class="btn link danger" id="bkYes">Replace</button><button class="btn link" id="bkNo">Cancel</button></span>`;
+  } catch (err) { toast("Cannot restore: " + err.message); }
+});
+$("bkConfirm").addEventListener("click", async (e) => {
+  if (e.target.id === "bkNo") { pendingRestore = null; $("bkConfirm").innerHTML = ""; return; }
+  if (e.target.id !== "bkYes" || !pendingRestore) return;
+  const j = pendingRestore; pendingRestore = null; $("bkConfirm").textContent = "Restoring…";
+  for (const v of [...S.vouchers]) await Store.deleteVoucher(v.id);
+  for (const t of [...S.topups]) await Store.deleteTopup(t.id);
+  await Store.saveSettings({ ...structuredClone(DEFAULT_SETTINGS), ...j.settings });
+  for (const v of j.vouchers) await Store.saveVoucher(v);
+  for (const t of j.topups || []) await Store.saveTopup(t);
+  await Store.saveCount(j.count || { q: {} });
+  $("bkConfirm").textContent = ""; fillForms(); fillCountForm(); render(); toast("Register restored");
+});
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3200); }
+
+/* ---------- start ---------- */
+let startTab = "vouchers";
+try { startTab = (location.hash || "").slice(1) || localStorage.getItem("pettycash.tab") || "vouchers"; } catch { /* ignore */ }
+showTab(startTab);
+$("vDate").value = today(); $("tDate").value = today();
+updateSplit(); vatHint(); render();
+boot();
+window.__pc = { toH, fmt, split, calc, vatNoOk, S, journal };
+})();
+</script>

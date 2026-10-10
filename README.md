@@ -11,6 +11,7 @@ Nothing here is production code. Break it, fix it, revert it — that is the poi
 | --- | --- |
 | `expenses/` | A tiny Python expense-tracker library — the thing you'll actually change |
 | `tests/` | Unit tests for that library |
+| `pettycash/index.html` | Petty cash imprest app (browser): vouchers with 15% VAT split, top-ups, SAR cash count, reconciliation, Excel/CSV export. Open the file in a browser. |
 | `.github/workflows/ci.yml` | GitHub Actions: runs the tests on every push and pull request |
 | `.github/ISSUE_TEMPLATE/` | Templates that pre-fill new issues |
 | `.github/pull_request_template.md` | Template that pre-fills new pull requests |
