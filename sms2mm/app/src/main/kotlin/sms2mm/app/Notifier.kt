@@ -37,6 +37,17 @@ object Notifier {
         else -> "${t.category.label()} · ${t.account}" + if (t.needsReview) " · choose a category" else ""
     }
 
+    /** Everything to type into Money Manager, in its field order. */
+    fun details(t: PendingTxn): String = buildString {
+        append(t.type.name.lowercase().replaceFirstChar { it.uppercase() })
+        if (t.type == TxnType.TRANSFER) append(" · ${t.account} → ${t.toAccount}")
+        else append(" · ${t.account} · ${if (t.needsReview) "pick a category" else t.category.label()}")
+        append("\n${t.currency} ${t.amount}")
+        t.note?.let { append(" · note: $it") }
+        t.description?.let { append(" · $it") }
+        append("\n${t.time.toLocalDate()} ${t.time.toLocalTime()}")
+    }
+
     fun show(ctx: Context, t: PendingTxn) {
         if (!allowed(ctx)) return
         ensureChannel(ctx)
@@ -53,9 +64,9 @@ object Notifier {
             .setAutoCancel(false)
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-        // Uncategorised (e.g. UPI to a person): Edit first, then Add from the edit screen.
-        if (!t.needsReview) builder.addAction(0, "Add", ActionReceiver.intent(ctx, ActionReceiver.ADD, t))
-        builder.addAction(0, if (t.needsReview) "Choose category" else "Edit", edit)
+        builder.setStyle(NotificationCompat.BigTextStyle().bigText(details(t)))
+        builder.addAction(0, "Recorded ✔", ActionReceiver.intent(ctx, ActionReceiver.RECORDED, t))
+        builder.addAction(0, if (t.needsReview) "Pick category" else "Edit", edit)
         builder.addAction(0, "Ignore", ActionReceiver.intent(ctx, ActionReceiver.IGNORE, t))
         NotificationManagerCompat.from(ctx).notify(t.notificationId, builder.build())
     }
@@ -70,7 +81,7 @@ object Notifier {
         val n = NotificationCompat.Builder(ctx, CHANNEL)
             .setSmallIcon(android.R.drawable.stat_notify_chat)
             .setContentTitle("$bank SMS not recognised")
-            .setContentText("Add it to Money Manager by hand, and send the masked SMS so the layout can be added.")
+            .setContentText("Enter it in Money Manager yourself. Send the masked SMS so this layout can be added.")
             .setContentIntent(open)
             .setAutoCancel(true)
             .build()

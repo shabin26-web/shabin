@@ -122,6 +122,6 @@ private fun Header() {
             style = MaterialTheme.typography.titleLarge,
             color = Palette.Text,
         )
-        Text("Offline · OTP-safe · you tap Save", style = MaterialTheme.typography.labelSmall, color = Palette.TextDim)
+        Text("Offline · OTP-safe · track what you've recorded", style = MaterialTheme.typography.labelSmall, color = Palette.TextDim)
     }
 }

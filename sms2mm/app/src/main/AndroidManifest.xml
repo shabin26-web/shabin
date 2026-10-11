@@ -12,7 +12,7 @@
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- So the app can open Money Manager (Android 11+ package visibility). -->
+    <!-- So the "Open Money Manager" button can launch it (Android 11+ package visibility). -->
     <queries>
         <package android:name="com.realbyteapps.moneymanagerfree" />
         <package android:name="com.realbyteapps.moneymanager" />
@@ -49,17 +49,5 @@
             android:name=".ActionReceiver"
             android:exported="false" />
 
-        <service
-            android:name=".MmAutofillService"
-            android:exported="false"
-            android:label="@string/a11y_label"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_service" />
-        </service>
     </application>
 </manifest>

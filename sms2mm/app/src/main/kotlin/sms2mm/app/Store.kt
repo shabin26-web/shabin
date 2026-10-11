@@ -16,9 +16,15 @@ import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.time.YearMonth
 
-/** Where a captured transaction stands. */
+/**
+ * Where a captured transaction stands. ENTERED = recorded in Money Manager.
+ * FILLED and FAILED are from the old auto-fill version and are shown as Pending.
+ */
 @Serializable
-enum class Status { PENDING, FILLED, ENTERED, IGNORED, FAILED }
+enum class Status { PENDING, FILLED, ENTERED, IGNORED, FAILED;
+
+    val isOpen: Boolean get() = this != ENTERED && this != IGNORED
+}
 
 /**
  * One captured bank transaction. Only parsed fields — the SMS text itself is never stored.
@@ -181,17 +187,9 @@ object Store {
         write(ctx, "skips.json", json.encodeToString(skipList, kept))
     }
 
-    // ---------------------------------------------------------------- settings
-
-    private fun prefs(ctx: Context) = ctx.getSharedPreferences("settings", Context.MODE_PRIVATE)
-
-    /** When on, the auto-fill service writes Money Manager's screen layout to a file (for tuning). */
-    fun recordLayout(ctx: Context): Boolean = prefs(ctx).getBoolean("record_layout", false)
-
-    fun setRecordLayout(ctx: Context, on: Boolean) {
-        prefs(ctx).edit().putBoolean("record_layout", on).apply()
+    /** Ask screens to refresh (e.g. after a permission was granted). */
+    fun touch() {
         _changes.value = _changes.value + 1
     }
 
-    fun layoutFile(ctx: Context) = file(ctx, "mm_layout.txt")
 }

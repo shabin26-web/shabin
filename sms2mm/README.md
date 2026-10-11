@@ -1,8 +1,10 @@
-# sms2mm — Bank SMS → Money Manager
+# sms2mm — Bank SMS → Money Manager tracker
 
-An Android app that reads your bank SMS, shows each transaction as a
-notification (`SAR 25.42 · Lulu · 🏘️ Household > Home Stationery · STC Pay 💳`),
-and on **Add** opens Money Manager and fills the entry in. You check it and tap **Save**.
+An Android app that reads your bank SMS and turns each one into a **Pending** item showing exactly
+what to enter in Money Manager: account, category, amount, note
+(`SAR 25.42 · Lulu · 🏘️ Household > Home Stationery · STC Pay 💳`).
+You type it into Money Manager yourself and tap **Recorded ✔**. The Home screen shows what is
+still pending this month, and the total reaches 0 when everything is recorded.
 
 ## Security
 
@@ -15,8 +17,8 @@ and on **Add** opens Money Manager and fills the entry in. You check it and tap 
   before parsing. Only a count is kept. See `core/src/main/kotlin/sms2mm/core/OtpFilter.kt`.
 - **No raw SMS stored.** Only date, amount, merchant, card last-4, account and category,
   in app-private storage that is excluded from phone backups.
-- **Auto-fill sees Money Manager only.** The Accessibility service is limited to
-  Money Manager's package (`res/xml/accessibility_service.xml`) and never taps Save.
+- **No Accessibility access.** It never reads or controls other apps. CI fails if an
+  Accessibility service ever appears in the manifest.
 - **Your data is not in this repo.** Card numbers, account mapping and keywords live in a
   rules file on the phone (Setup → Import / Export rules).
 
@@ -28,16 +30,15 @@ and on **Add** opens Money Manager and fills the entry in. You check it and tap 
 2. **Samsung Auto Blocker**: Settings → Security and privacy → **Auto Blocker → Off**. Turn it back on
    after step 5.
 3. **Install**: Google Play Protect blocks apps installed from a file that ask for SMS or
-   Accessibility access ("App blocked to protect your device"). Pause it: Play Store → profile →
+   notification access ("App blocked to protect your device"). Pause it: Play Store → profile →
    **Play Protect → ⚙️ → Scan apps with Play Protect → Off**. Open `sms2mm.apk` from Downloads and
    install it, then turn scanning back on. If it warns about this app later, choose **Keep app**.
 4. Save your `sms2mm-rules.json` into Downloads.
 5. **Restricted settings**: open the app once, then go to Settings → Apps → **SMS → Money Manager** →
    ⋮ (top right) → **Allow restricted settings**. Android needs this before it lets an app installed
-   this way use SMS or Accessibility.
+   this way read SMS. (Setup → **Open app info** goes straight there.)
 6. **In the app**:
-   - **Setup**: Allow SMS + notifications → Open Accessibility settings → Installed apps →
-     **SMS → Money Manager auto-fill → On** → **Import rules**.
+   - **Setup**: Allow SMS + notifications → **Import rules**.
    - **Banks**: **Scan inbox for bank senders** → `+` each sender → **Save**.
 7. **Check**: Settings → Apps → SMS → Money Manager → Permissions shows no internet access.
 
@@ -51,18 +52,21 @@ Keep the keystore private; anyone with it could sign an app that installs as an 
 
 ## Using it
 
-- **New bank SMS** → notification → **Add** → Money Manager opens and fills the tab,
-  account, category, amount and note → you tap **Save**.
-- **No category known** (e.g. UPI to a person) → the notification says **Choose category**.
-  Pick one and tick **Remember … for next time** to teach the app that merchant.
-- **Pending tab** → this month's tie-out per currency: captured − entered − ignored
-  = still to add, red until it is 0. It also shows how many OTP or unrecognised SMS were skipped.
-- **Keywords tab** → change rules any time:
-  - one rule can have **several keywords** (`LULU`, `LULU HYPER`, `لولو`); the longest match wins
-  - optionally limit a rule to one account or to expense/income only
-  - **transfer rules**: payer/payee → Money Manager transfer with another account
-  - **ignore words**
-  - **test box** to see which rule a merchant name hits
+- **New bank SMS** → notification with the account, category, amount and note →
+  enter it in Money Manager → tap **Recorded ✔** on the notification or in the app.
+- **No category known** (e.g. UPI to a person) → **Pick category**. Tick **Remember … for next time**
+  to teach the app that merchant.
+- **Home tab**:
+  - Filters: **Pending · Recorded · All**.
+  - **Open MM ↗** opens Money Manager.
+  - Recorded items can go back with **Undo → Pending**.
+  - Summary per currency: captured − recorded − ignored = pending, which reaches 0 when all are recorded.
+  - It also counts skipped OTP and unrecognised SMS.
+- **Rules tab**: change keywords any time.
+  - A rule can have several keywords (`LULU`, `LULU HYPER`, `لولو`), and the longest match wins.
+  - Keywords of 4+ letters ignore spaces and dashes.
+  - A rule can be limited to one account or to expense/income only.
+  - Transfer rules, ignore words, and a test box to check which rule a merchant hits.
 
 ## Supported SMS layouts (`core/.../KnownBanks.kt`)
 
@@ -85,5 +89,3 @@ cd sms2mm
 ./gradlew :app:assembleDebug  # needs the Android SDK (CI does this)
 ```
 
-If the auto-fill gets stuck on a Money Manager screen: Setup → **Record Money Manager's add
-screen**, tap Add once, then **Share recorded layout** so the field matching can be adjusted.

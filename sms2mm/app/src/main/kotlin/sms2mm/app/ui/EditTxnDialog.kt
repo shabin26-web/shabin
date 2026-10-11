@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import sms2mm.app.ActionReceiver
+import sms2mm.app.Notifier
 import sms2mm.app.PendingTxn
 import sms2mm.app.Status
 import sms2mm.app.Store
@@ -60,13 +61,14 @@ fun EditTxnDialog(id: String, onClose: () -> Unit) {
         note = note.trim().ifEmpty { null },
         description = description.trim().ifEmpty { null },
         needsReview = type != TxnType.TRANSFER && category.isBlank(),
-        status = if (original.status == Status.FAILED) Status.PENDING else original.status,
+        status = if (original.status.isOpen) Status.PENDING else original.status,
         failReason = null,
     )
 
     fun save(): PendingTxn {
         val t = edited()
         Store.update(context, id) { t }
+        if (t.status.isOpen) Notifier.show(context, t) // refresh the notification with the new details
         if (learn && original.merchant != null) Store.updateRules(context) { learnFrom(it, original.merchant, t) }
         return t
     }
@@ -104,8 +106,8 @@ fun EditTxnDialog(id: String, onClose: () -> Unit) {
             TextButton(enabled = canAdd, onClick = {
                 val t = save()
                 onClose()
-                ActionReceiver.addToMoneyManager(context, t)
-            }) { Text("Save & add") }
+                ActionReceiver.setStatus(context, t.id, Status.ENTERED)
+            }) { Text("Save & mark recorded") }
         },
         dismissButton = {
             Row {

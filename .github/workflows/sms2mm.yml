@@ -69,6 +69,10 @@ jobs:
             echo "::error::INTERNET permission found in the merged manifest"; exit 1
           fi
           echo "OK: no INTERNET permission"
+          if grep -n 'BIND_ACCESSIBILITY_SERVICE' $manifests; then
+            echo "::error::An Accessibility service is in the merged manifest"; exit 1
+          fi
+          echo "OK: no Accessibility service"
 
       - name: Show which key signed the APK
         run: |

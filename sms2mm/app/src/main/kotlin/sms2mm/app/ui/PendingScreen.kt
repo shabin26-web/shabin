@@ -38,7 +38,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import sms2mm.app.ActionReceiver
-import sms2mm.app.Notifier
 import sms2mm.app.PendingTxn
 import sms2mm.app.SkipEvent
 import sms2mm.app.Status
@@ -51,7 +50,6 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
 private val TIME = DateTimeFormatter.ofPattern("dd MMM · HH:mm")
-private val OPEN = setOf(Status.PENDING, Status.FILLED, Status.FAILED)
 
 private fun money(v: BigDecimal) = "%,.2f".format(v)
 
@@ -59,28 +57,33 @@ private fun money(v: BigDecimal) = "%,.2f".format(v)
 private fun PendingTxn.accent(): Color = when {
     status == Status.ENTERED -> Palette.Green
     status == Status.IGNORED -> Palette.TextDim
-    status == Status.FAILED || needsReview -> Palette.Red
-    status == Status.FILLED -> Palette.Amber
+    needsReview -> Palette.Amber
     else -> Palette.Cyan
 }
 
 private fun PendingTxn.statusText(): String = when {
-    status == Status.ENTERED -> "Saved"
+    status == Status.ENTERED -> "Recorded"
     status == Status.IGNORED -> "Ignored"
-    status == Status.FAILED -> "Needs you"
-    status == Status.FILLED -> "Filled · tap Save"
-    needsReview -> "Pick category"
-    else -> "Ready"
+    needsReview -> "Pending · pick category"
+    else -> "Pending"
 }
+
+private enum class Show { PENDING, RECORDED, ALL }
 
 @Composable
 fun PendingScreen(modifier: Modifier, onEdit: (String) -> Unit) {
     val context = ctx()
     val version = storeVersion()
-    var showAll by rememberSaveable { mutableStateOf(false) }
+    var show by rememberSaveable { mutableStateOf(Show.PENDING) }
     val all = remember(version) { Store.txns(context) }
     val skips = remember(version) { Store.skips(context) }
-    val shown = remember(all, showAll) { if (showAll) all else all.filter { it.status in OPEN } }
+    val shown = remember(all, show) {
+        when (show) {
+            Show.PENDING -> all.filter { it.status.isOpen }
+            Show.RECORDED -> all.filter { it.status == Status.ENTERED }
+            Show.ALL -> all
+        }
+    }
 
     LazyColumn(
         modifier.padding(horizontal = 16.dp),
@@ -88,14 +91,17 @@ fun PendingScreen(modifier: Modifier, onEdit: (String) -> Unit) {
     ) {
         item { Summary(all, skips) }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
-                Filter("To add (${all.count { it.status in OPEN }})", !showAll) { showAll = false }
-                Filter("All (${all.size})", showAll) { showAll = true }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                Filter("Pending (${all.count { it.status.isOpen }})", show == Show.PENDING) { show = Show.PENDING }
+                Filter("Recorded", show == Show.RECORDED) { show = Show.RECORDED }
+                Filter("All", show == Show.ALL) { show = Show.ALL }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = { ActionReceiver.openMoneyManager(context) }) { Text("Open MM ↗", color = Palette.Cyan) }
             }
         }
         if (shown.isEmpty()) item {
             Text(
-                "All caught up. New bank SMS appear here and as a notification.",
+                if (show == Show.PENDING) "All caught up ✔ New bank SMS appear here and as a notification." else "Nothing here yet.",
                 color = Palette.TextDim,
                 modifier = Modifier.padding(vertical = 32.dp),
             )
@@ -133,7 +139,7 @@ private fun Summary(all: List<PendingTxn>, skips: List<SkipEvent>) {
             .padding(18.dp),
     ) {
         Text(
-            "STILL TO ADD · ${month.month.name.take(3)} ${month.year}",
+            "PENDING · ${month.month.name.take(3)} ${month.year}",
             style = MaterialTheme.typography.labelSmall,
             color = Palette.TextDim,
         )
@@ -153,7 +159,7 @@ private fun Summary(all: List<PendingTxn>, skips: List<SkipEvent>) {
                 Text(" $currency", color = Palette.TextDim, modifier = Modifier.padding(bottom = 6.dp))
                 Spacer(Modifier.weight(1f))
                 Text(
-                    if (clear) "Ties out ✔" else "${list.count { it.status in OPEN }} open",
+                    if (clear) "All recorded ✔" else "${list.count { it.status.isOpen }} pending",
                     color = if (clear) Palette.Green else Palette.Amber,
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(bottom = 8.dp),
@@ -161,7 +167,7 @@ private fun Summary(all: List<PendingTxn>, skips: List<SkipEvent>) {
             }
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Stat("Captured", captured)
-                Stat("Entered", entered)
+                Stat("Recorded", entered)
                 Stat("Ignored", ignored)
             }
         }
@@ -189,7 +195,7 @@ private fun Stat(label: String, value: BigDecimal) = Column {
 private fun TxnCard(t: PendingTxn, onEdit: (String) -> Unit) {
     val context = ctx()
     val accent = t.accent()
-    val open = t.status in OPEN
+    val open = t.status.isOpen
     val shape = RoundedCornerShape(18.dp)
     Row(
         Modifier
@@ -233,30 +239,23 @@ private fun TxnCard(t: PendingTxn, onEdit: (String) -> Unit) {
             t.failReason?.let { Text(it, color = Palette.Red, style = MaterialTheme.typography.bodySmall) }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
                 if (open) {
-                    if (!t.needsReview) {
-                        Button(
-                            onClick = { ActionReceiver.addToMoneyManager(context, t) },
-                            colors = ButtonDefaults.buttonColors(containerColor = Palette.Cyan, contentColor = Color(0xFF00222A)),
-                            modifier = Modifier.height(36.dp),
-                        ) { Text("Add") }
-                        Spacer(Modifier.width(8.dp))
-                    }
+                    Button(
+                        onClick = { ActionReceiver.setStatus(context, t.id, Status.ENTERED) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Palette.Cyan, contentColor = Color(0xFF00222A)),
+                        modifier = Modifier.height(36.dp),
+                    ) { Text("Recorded ✔") }
+                    Spacer(Modifier.width(8.dp))
                     OutlinedButton(onClick = { onEdit(t.id) }, modifier = Modifier.height(36.dp)) {
                         Text(if (t.needsReview) "Pick category" else "Edit")
                     }
                     Spacer(Modifier.weight(1f))
-                    if (t.status == Status.FILLED || t.status == Status.FAILED) {
-                        TextButton(onClick = { Store.update(context, t.id) { it.copy(status = Status.ENTERED) }; Notifier.cancel(context, t) }) {
-                            Text("Saved ✔", color = Palette.Green)
-                        }
-                    }
-                    TextButton(onClick = { Store.update(context, t.id) { it.copy(status = Status.IGNORED) }; Notifier.cancel(context, t) }) {
+                    TextButton(onClick = { ActionReceiver.setStatus(context, t.id, Status.IGNORED) }) {
                         Text("Ignore", color = Palette.TextDim)
                     }
                 } else {
                     Spacer(Modifier.weight(1f))
-                    TextButton(onClick = { Store.update(context, t.id) { it.copy(status = Status.PENDING) } }) {
-                        Text("Undo", color = Palette.TextDim)
+                    TextButton(onClick = { ActionReceiver.setStatus(context, t.id, Status.PENDING) }) {
+                        Text("Undo → Pending", color = Palette.TextDim)
                     }
                 }
             }

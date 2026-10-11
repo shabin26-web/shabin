@@ -6,24 +6,22 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 
-/** Handles the Add / Ignore buttons on a transaction notification. */
+/** Handles the Recorded / Ignore buttons on a transaction notification. */
 class ActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getStringExtra(EXTRA_ID) ?: return
-        val txn = Store.txn(context, id) ?: return
         when (intent.action) {
-            ADD -> addToMoneyManager(context, txn)
-            IGNORE -> {
-                Store.update(context, id) { it.copy(status = Status.IGNORED) }
-                Notifier.cancel(context, txn)
-            }
+            RECORDED -> setStatus(context, id, Status.ENTERED)
+            IGNORE -> setStatus(context, id, Status.IGNORED)
         }
     }
 
     companion object {
-        const val ADD = "sms2mm.app.ADD"
+        const val RECORDED = "sms2mm.app.RECORDED"
         const val IGNORE = "sms2mm.app.IGNORE"
         private const val EXTRA_ID = "id"
+
+        private val MM_PACKAGES = listOf("com.realbyteapps.moneymanagerfree", "com.realbyteapps.moneymanager")
 
         fun intent(ctx: Context, action: String, t: PendingTxn): PendingIntent = PendingIntent.getBroadcast(
             ctx, (action + t.id).hashCode(),
@@ -31,14 +29,18 @@ class ActionReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        /** Shared by the notification and the app screens. */
-        fun addToMoneyManager(ctx: Context, txn: PendingTxn) {
-            val problem = MmAutofillService.start(ctx, txn)
-            if (problem != null) {
-                Toast.makeText(ctx, problem, Toast.LENGTH_LONG).show()
-            } else {
-                Notifier.cancel(ctx, txn)
-            }
+        /** Pending → Recorded / Ignored (or back to Pending); clears the notification once it's handled. */
+        fun setStatus(ctx: Context, id: String, status: Status) {
+            val txn = Store.txn(ctx, id) ?: return
+            Store.update(ctx, id) { it.copy(status = status, failReason = null) }
+            if (status == Status.PENDING) Notifier.show(ctx, txn.copy(status = status)) else Notifier.cancel(ctx, txn)
+        }
+
+        /** Opens Money Manager (a plain app launch) so the user can type the entry. */
+        fun openMoneyManager(ctx: Context) {
+            val launch = MM_PACKAGES.firstNotNullOfOrNull { ctx.packageManager.getLaunchIntentForPackage(it) }
+            if (launch == null) Toast.makeText(ctx, "Money Manager is not installed", Toast.LENGTH_SHORT).show()
+            else ctx.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
     }
 }
