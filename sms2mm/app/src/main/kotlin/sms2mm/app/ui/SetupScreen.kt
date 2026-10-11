@@ -22,6 +22,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import sms2mm.app.ExportImport
 import sms2mm.app.Store
 import sms2mm.core.UserRules
 
@@ -40,13 +49,35 @@ fun SetupScreen(modifier: Modifier) {
         uri ?: return@rememberLauncherForActivityResult
         val text = context.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() } ?: return@rememberLauncherForActivityResult
         try {
-            val rules = UserRules.fromJson(text)
-            Store.saveRules(context, rules)
-            Toast.makeText(context, "Imported ${rules.keywords.size} keyword rules", Toast.LENGTH_SHORT).show()
+            val imported = UserRules.fromJson(text)
+            val before = Store.rules(context).keywords.size
+            Store.updateRules(context) { it.merge(imported) }
+            val added = Store.rules(context).keywords.size - before
+            Toast.makeText(context, "Merged: $added new keyword rules added, your existing rules kept", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
             Toast.makeText(context, "Not a valid rules file: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
+
+    val scope = rememberCoroutineScope()
+    var importing by remember { mutableStateOf(false) }
+    var importResult by remember { mutableStateOf<String?>(null) }
+    val importExport = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        importing = true
+        scope.launch {
+            importResult = withContext(Dispatchers.IO) {
+                try {
+                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: error("Could not open the file")
+                    "✔ " + ExportImport.import(context, bytes)
+                } catch (e: Exception) {
+                    "✖ Not a Money Manager export: ${e.message}"
+                }
+            }
+            importing = false
+        }
+    }
+    val catalog = Store.rules(context).catalog
 
     Column(modifier.padding(horizontal = 16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SectionTitle("1. Permissions")
@@ -73,10 +104,30 @@ fun SetupScreen(modifier: Modifier) {
             }) { Text("Open app info") }
         }
 
-        SectionTitle("2. Banks and keywords")
+        SectionTitle("2. Money Manager accounts & categories")
+        Text(
+            "In Money Manager: Settings → Backup → Export Data to Excel. Then import the file here: " +
+                "your accounts, categories and subcategories become pick lists, and pending items " +
+                "already in Money Manager are marked Recorded.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Button(enabled = !importing, onClick = {
+            importExport.launch(arrayOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/octet-stream", "*/*"))
+        }) { Text(if (importing) "Reading…" else "Import Money Manager export (.xlsx)") }
+        importResult?.let { Text(it, color = if (it.startsWith("✔")) Palette.Green else Palette.Red, style = MaterialTheme.typography.bodySmall) }
+        if (!catalog.isEmpty) {
+            Text(
+                "Loaded: ${catalog.accounts.size} accounts · ${catalog.expense.size} expense + ${catalog.income.size} income categories" +
+                    (catalog.updated?.let { " · updated $it" } ?: ""),
+                style = MaterialTheme.typography.labelSmall,
+                color = Palette.TextDim,
+            )
+        }
+
+        SectionTitle("3. Banks and keywords")
         Text("Set sender names on the Banks tab and keywords on the Rules tab, or import your rules file:", style = MaterialTheme.typography.bodySmall)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { importRules.launch(arrayOf("application/json", "text/plain", "*/*")) }) { Text("Import rules") }
+            OutlinedButton(onClick = { importRules.launch(arrayOf("application/json", "text/plain", "*/*")) }) { Text("Import rules (merge)") }
             OutlinedButton(onClick = { exportRules.launch("sms2mm-rules.json") }) { Text("Export rules") }
         }
 

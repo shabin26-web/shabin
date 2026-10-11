@@ -108,8 +108,7 @@ fun KeywordsScreen(modifier: Modifier) {
     editing?.let { i ->
         RuleDialog(
             rule = rules.keywords.getOrNull(i),
-            accounts = knownAccounts(rules),
-            categories = knownCategories(rules),
+            rules = rules,
             onSave = { r -> Store.updateRules(context) { cur -> cur.copy(keywords = if (i >= 0) cur.keywords.toMutableList().also { it[i] = r } else cur.keywords + r) }; editing = null },
             onDelete = if (i >= 0) ({ Store.updateRules(context) { cur -> cur.copy(keywords = cur.keywords.filterIndexed { j, _ -> j != i }) }; editing = null }) else null,
             onClose = { editing = null },
@@ -118,7 +117,7 @@ fun KeywordsScreen(modifier: Modifier) {
     editingTransfer?.let { i ->
         TransferDialog(
             rule = rules.transfers.getOrNull(i),
-            accounts = knownAccounts(rules),
+            accounts = accountOptions(rules),
             onSave = { r -> Store.updateRules(context) { cur -> cur.copy(transfers = if (i >= 0) cur.transfers.toMutableList().also { it[i] = r } else cur.transfers + r) }; editingTransfer = null },
             onDelete = if (i >= 0) ({ Store.updateRules(context) { cur -> cur.copy(transfers = cur.transfers.filterIndexed { j, _ -> j != i }) }; editingTransfer = null }) else null,
             onClose = { editingTransfer = null },
@@ -147,8 +146,7 @@ private fun KeywordChips(keywords: List<String>, onChange: (List<String>) -> Uni
 @Composable
 private fun RuleDialog(
     rule: KeywordRule?,
-    accounts: List<String>,
-    categories: List<Category>,
+    rules: sms2mm.core.UserRules,
     onSave: (KeywordRule) -> Unit,
     onDelete: (() -> Unit)?,
     onClose: () -> Unit,
@@ -168,16 +166,15 @@ private fun RuleDialog(
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Matches when ANY keyword appears in the SMS merchant name (case doesn't matter).", style = MaterialTheme.typography.bodySmall)
                 KeywordChips(keywords) { keywords = it }
-                SuggestField("Category", category, categories.map { it.name }.distinct(), { category = it })
-                SuggestField("Subcategory", sub, categories.filter { it.name == category }.mapNotNull { it.subcategory }.distinct(), { sub = it })
-                OutlinedTextField(note, { note = it }, label = { Text("Note to write (optional)") }, singleLine = true)
-                OutlinedTextField(description, { description = it }, label = { Text("Description (optional)") }, singleLine = true)
-                SuggestField("Only for account (optional)", account, accounts, { account = it })
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     FilterChip(selected = type == null, onClick = { type = null }, label = { Text("Any") })
                     FilterChip(selected = type == TxnType.EXPENSE, onClick = { type = TxnType.EXPENSE }, label = { Text("Expense") })
                     FilterChip(selected = type == TxnType.INCOME, onClick = { type = TxnType.INCOME }, label = { Text("Income") })
                 }
+                CategoryPickers(rules, type, category, sub, { category = it }, { sub = it })
+                OutlinedTextField(note, { note = it }, label = { Text("Note to write (optional)") }, singleLine = true)
+                OutlinedTextField(description, { description = it }, label = { Text("Description (optional)") }, singleLine = true)
+                PickField("Only for account (optional)", account, accountOptions(rules), { account = it }, optional = true)
             }
         },
         confirmButton = {
@@ -224,10 +221,10 @@ private fun TransferDialog(
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("When the payer/payee contains ANY keyword, the SMS becomes a Money Manager transfer with the other account.", style = MaterialTheme.typography.bodySmall)
                 KeywordChips(keywords) { keywords = it }
-                SuggestField("Other account", other, accounts, { other = it })
+                PickField("Other account", other, accounts, { other = it })
                 OutlinedTextField(note, { note = it }, label = { Text("Note (optional)") }, singleLine = true)
                 OutlinedTextField(description, { description = it }, label = { Text("Description (optional)") }, singleLine = true)
-                SuggestField("Only for bank account (optional)", account, accounts, { account = it })
+                PickField("Only for bank account (optional)", account, accounts, { account = it }, optional = true)
             }
         },
         confirmButton = {

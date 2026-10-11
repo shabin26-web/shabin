@@ -13,6 +13,11 @@ import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.automirrored.rounded.List
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
+import sms2mm.app.ui.GlowBackground
+import sms2mm.app.ui.InsightsScreen
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -66,6 +71,7 @@ private data class Tab(val label: String, val icon: ImageVector)
 
 private val tabs = listOf(
     Tab("Home", Icons.Rounded.Home),
+    Tab("Insights", Icons.Rounded.Star),
     Tab("Rules", Icons.AutoMirrored.Rounded.List),
     Tab("Banks", Icons.Rounded.Email),
     Tab("Setup", Icons.Rounded.Settings),
@@ -74,18 +80,20 @@ private val tabs = listOf(
 @Composable
 private fun App(editId: String?, setEditId: (String?) -> Unit) {
     Sms2mmTheme {
+      GlowBackground {
         var tab by rememberSaveable { mutableIntStateOf(0) }
         Scaffold(
-            containerColor = Palette.Background,
+            containerColor = Color.Transparent,
             topBar = { Header() },
             bottomBar = {
-                NavigationBar(containerColor = Palette.Surface, tonalElevation = 0.dp) {
+                NavigationBar(containerColor = Palette.Surface.copy(alpha = 0.92f), tonalElevation = 0.dp) {
                     tabs.forEachIndexed { i, t ->
                         NavigationBarItem(
                             selected = tab == i,
                             onClick = { tab = i },
                             icon = { Icon(t.icon, contentDescription = t.label) },
-                            label = { Text(t.label) },
+                            label = { Text(t.label, style = MaterialTheme.typography.labelSmall) },
+                            alwaysShowLabel = false,
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = Palette.Cyan,
                                 selectedTextColor = Palette.Cyan,
@@ -101,12 +109,14 @@ private fun App(editId: String?, setEditId: (String?) -> Unit) {
             val modifier = Modifier.padding(padding)
             when (tab) {
                 0 -> PendingScreen(modifier, onEdit = setEditId)
-                1 -> KeywordsScreen(modifier)
-                2 -> BanksScreen(modifier)
+                1 -> InsightsScreen(modifier)
+                2 -> KeywordsScreen(modifier)
+                3 -> BanksScreen(modifier)
                 else -> SetupScreen(modifier)
             }
         }
         if (editId != null) EditTxnDialog(editId, onClose = { setEditId(null) })
+      }
     }
 }
 
@@ -115,13 +125,13 @@ private fun Header() {
     Column(Modifier.statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 4.dp)) {
         Text(
             buildAnnotatedString {
-                append("SMS ")
-                withStyle(SpanStyle(color = Palette.Cyan)) { append("→") }
-                append(" Money Manager")
+                append("SMS")
+                withStyle(SpanStyle(color = Palette.Cyan)) { append(" ⟶ ") }
+                append("MONEY")
             },
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleLarge.copy(letterSpacing = 3.sp),
             color = Palette.Text,
         )
-        Text("Offline · OTP-safe · track what you've recorded", style = MaterialTheme.typography.labelSmall, color = Palette.TextDim)
+        Text("● OFFLINE   ● OTP-SAFE   ● NO INTERNET", style = MaterialTheme.typography.labelSmall, color = Palette.Cyan.copy(alpha = 0.75f))
     }
 }

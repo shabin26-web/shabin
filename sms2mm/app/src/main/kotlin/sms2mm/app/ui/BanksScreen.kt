@@ -56,7 +56,7 @@ fun BanksScreen(modifier: Modifier) {
 
         KnownBanks.Bank.entries.forEach { bank ->
             val setup = rules.banks.firstOrNull { it.bank == bank }
-            BankCard(bank, setup, suggestions?.get(bank).orEmpty()) { updated ->
+            BankCard(bank, setup, suggestions?.get(bank).orEmpty(), accountOptions(rules)) { updated ->
                 Store.updateRules(context) { cur ->
                     val others = cur.banks.filterNot { it.bank == bank }
                     cur.copy(banks = if (updated == null) others else others + updated)
@@ -69,7 +69,7 @@ fun BanksScreen(modifier: Modifier) {
             entries = rules.accounts,
             keyLabel = "Last 4 digits",
             valueLabel = "Money Manager account",
-            suggestions = knownAccounts(rules),
+            suggestions = accountOptions(rules),
         ) { map -> Store.updateRules(context) { it.copy(accounts = map) } }
 
         SectionTitle("Account → group in Money Manager's account picker")
@@ -79,14 +79,14 @@ fun BanksScreen(modifier: Modifier) {
             keyLabel = "Account",
             valueLabel = "Group",
             suggestions = listOf("Cash", "Accounts", "Card", "Debit Card", "Savings", "Top-Up/Prepaid", "Debt", "Overdrafts", "Credit", "Insurance", "Others"),
-            keySuggestions = knownAccounts(rules),
+            keySuggestions = accountOptions(rules),
         ) { map -> Store.updateRules(context) { it.copy(accountGroups = map) } }
         Text("", Modifier.padding(bottom = 24.dp))
     }
 }
 
 @Composable
-private fun BankCard(bank: KnownBanks.Bank, setup: BankSetup?, found: Map<String, Int>, onChange: (BankSetup?) -> Unit) {
+private fun BankCard(bank: KnownBanks.Bank, setup: BankSetup?, found: Map<String, Int>, accounts: List<String>, onChange: (BankSetup?) -> Unit) {
     var senders by remember(setup) { mutableStateOf(setup?.senders?.joinToString(", ").orEmpty()) }
     var account by remember(setup) { mutableStateOf(setup?.defaultAccount ?: bank.defaultAccount) }
     Card(Modifier.fillMaxWidth()) {
@@ -101,7 +101,7 @@ private fun BankCard(bank: KnownBanks.Bank, setup: BankSetup?, found: Map<String
             found.filterKeys { f -> splitList(senders).none { it.equals(f, true) } }.forEach { (sender, count) ->
                 TextButton(onClick = { senders = (splitList(senders) + sender).joinToString(", ") }) { Text("+ $sender ($count SMS look like ${bank.title})") }
             }
-            OutlinedTextField(account, { account = it }, label = { Text("Default Money Manager account") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            PickField("Default Money Manager account", account, accounts, { account = it })
             TextButton(onClick = { onChange(BankSetup(bank, splitList(senders), account.trim().ifBlank { null })) }) { Text("Save ${bank.title}") }
         }
     }
@@ -127,9 +127,9 @@ private fun MapEditor(
     if (keySuggestions.isEmpty()) {
         OutlinedTextField(key, { key = it }, label = { Text(keyLabel) }, singleLine = true, modifier = Modifier.fillMaxWidth())
     } else {
-        SuggestField(keyLabel, key, keySuggestions, { key = it })
+        PickField(keyLabel, key, keySuggestions, { key = it })
     }
-    SuggestField(valueLabel, value, suggestions, { value = it })
+    PickField(valueLabel, value, suggestions, { value = it })
     TextButton(enabled = key.isNotBlank() && value.isNotBlank(), onClick = {
         onSave(entries + (key.trim() to value.trim()))
         key = ""; value = ""

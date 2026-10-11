@@ -41,8 +41,7 @@ fun EditTxnDialog(id: String, onClose: () -> Unit) {
         return
     }
     val rules = remember { Store.rules(context) }
-    val accounts = remember(rules) { knownAccounts(rules) }
-    val categories = remember(rules) { knownCategories(rules) }
+    val accounts = remember(rules) { accountOptions(rules) }
 
     var type by remember { mutableStateOf(original.type) }
     var account by remember { mutableStateOf(original.account) }
@@ -85,12 +84,11 @@ fun EditTxnDialog(id: String, onClose: () -> Unit) {
                         FilterChip(selected = type == t, onClick = { type = t }, label = { Text(t.name.lowercase().replaceFirstChar { it.uppercase() }) })
                     }
                 }
-                SuggestField(if (type == TxnType.TRANSFER) "From account" else "Account", account, accounts, { account = it })
+                PickField(if (type == TxnType.TRANSFER) "From account" else "Account", account, accounts, { account = it })
                 if (type == TxnType.TRANSFER) {
-                    SuggestField("To account", toAccount, accounts, { toAccount = it })
+                    PickField("To account", toAccount, accounts, { toAccount = it })
                 } else {
-                    SuggestField("Category", category, categories.map { it.name }.distinct(), { category = it })
-                    SuggestField("Subcategory", sub, categories.filter { it.name == category }.mapNotNull { it.subcategory }.distinct(), { sub = it })
+                    CategoryPickers(rules, type, category, sub, { category = it }, { sub = it })
                 }
                 OutlinedTextField(note, { note = it }, label = { Text("Note") }, singleLine = true)
                 OutlinedTextField(description, { description = it }, label = { Text("Description") })

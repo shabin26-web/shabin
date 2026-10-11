@@ -53,20 +53,23 @@ Keep the keystore private; anyone with it could sign an app that installs as an 
 ## Using it
 
 - **New bank SMS** → notification with the account, category, amount and note →
-  enter it in Money Manager → tap **Recorded ✔** on the notification or in the app.
-- **No category known** (e.g. UPI to a person) → **Pick category**. Tick **Remember … for next time**
-  to teach the app that merchant.
-- **Home tab**:
-  - Filters: **Pending · Recorded · All**.
-  - **Open MM ↗** opens Money Manager.
-  - Recorded items can go back with **Undo → Pending**.
-  - Summary per currency: captured − recorded − ignored = pending, which reaches 0 when all are recorded.
-  - It also counts skipped OTP and unrecognised SMS.
-- **Rules tab**: change keywords any time.
-  - A rule can have several keywords (`LULU`, `LULU HYPER`, `لولو`), and the longest match wins.
-  - Keywords of 4+ letters ignore spaces and dashes.
-  - A rule can be limited to one account or to expense/income only.
-  - Transfer rules, ignore words, and a test box to check which rule a merchant hits.
+  enter it in Money Manager → tap **Recorded ✔** (notification, card button, or swipe the card right).
+- **Home**:
+  - progress ring and "pending this month" per currency
+  - **Pending · Recorded · All** filters and 🔍 search
+  - swipe right to mark Recorded, swipe left to Ignore
+  - tap the amount to copy it, long-press a card to copy all the details
+  - **Open Money Manager ↗**
+- **Insights**: spent / received / transferred, spending by category, top merchants and per-account counts.
+  Browse month by month and switch currency.
+- **Rules**:
+  - keywords, with several per rule; the longest match wins
+  - category, subcategory and account are chosen from **pick lists** built from your Money Manager export
+  - transfer rules, ignore words and a test box
+- **Setup → Import Money Manager export (.xlsx)** (Money Manager: Settings → Backup → Export to Excel):
+  - loads all your accounts, categories and subcategories into the pick lists
+  - marks pending items that are already in Money Manager as Recorded: same account, same amount, within a day
+- **Setup → Import rules (merge)** adds rules from a file and keeps everything you already have.
 
 ## Supported SMS layouts (`core/.../KnownBanks.kt`)
 

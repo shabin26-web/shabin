@@ -1,6 +1,16 @@
 package sms2mm.app.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
@@ -15,10 +25,10 @@ import androidx.compose.ui.unit.sp
 
 /** Calm dark palette with a cyan → violet accent. */
 object Palette {
-    val Background = Color(0xFF0A0E16)
-    val Surface = Color(0xFF121826)
-    val SurfaceHigh = Color(0xFF1A2233)
-    val Outline = Color(0xFF263049)
+    val Background = Color(0xFF060910)
+    val Surface = Color(0xFF0F1522)
+    val SurfaceHigh = Color(0xFF172036)
+    val Outline = Color(0xFF243150)
     val Text = Color(0xFFE6EAF2)
     val TextDim = Color(0xFF8B94A8)
     val Cyan = Color(0xFF22D3EE)
@@ -74,3 +84,55 @@ val AmountStyle = TextStyle(fontSize = 34.sp, fontWeight = FontWeight.Bold, lett
 @Composable
 fun Sms2mmTheme(content: @Composable () -> Unit) =
     MaterialTheme(colorScheme = colors, typography = type, shapes = shapes, content = content)
+
+/** Translucent "glass" card: dark surface, 1 dp cyan → violet hairline. */
+fun androidx.compose.ui.Modifier.glass(
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(22.dp),
+    alpha: Float = 0.78f,
+): androidx.compose.ui.Modifier = this
+    .then(androidx.compose.ui.Modifier.clip(shape))
+    .background(Palette.Surface.copy(alpha = alpha))
+    .border(1.dp, Brush.linearGradient(listOf(Palette.Cyan.copy(alpha = 0.55f), Palette.Violet.copy(alpha = 0.35f), Palette.Outline)), shape)
+
+/** Near-black background with soft cyan and violet glows. */
+@Composable
+fun GlowBackground(content: @Composable () -> Unit) {
+    androidx.compose.foundation.layout.Box(
+        androidx.compose.ui.Modifier
+            .fillMaxSize()
+            .background(Palette.Background)
+            .drawBehind {
+                drawCircle(
+                    Brush.radialGradient(listOf(Palette.Cyan.copy(alpha = 0.18f), Color.Transparent), center = Offset(size.width * 0.15f, size.height * 0.02f), radius = size.width * 0.9f),
+                    radius = size.width * 0.9f, center = Offset(size.width * 0.15f, size.height * 0.02f),
+                )
+                drawCircle(
+                    Brush.radialGradient(listOf(Palette.Violet.copy(alpha = 0.14f), Color.Transparent), center = Offset(size.width * 0.95f, size.height * 0.18f), radius = size.width * 0.8f),
+                    radius = size.width * 0.8f, center = Offset(size.width * 0.95f, size.height * 0.18f),
+                )
+            },
+    ) { content() }
+}
+
+/** Animated ring: share of this month's captured amount already recorded. */
+@Composable
+fun ProgressRing(fraction: Float, modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier, center: @Composable () -> Unit = {}) {
+    val animated by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = fraction.coerceIn(0f, 1f),
+        animationSpec = androidx.compose.animation.core.tween(900),
+        label = "ring",
+    )
+    androidx.compose.foundation.layout.Box(modifier, contentAlignment = androidx.compose.ui.Alignment.Center) {
+        androidx.compose.foundation.Canvas(androidx.compose.ui.Modifier.fillMaxSize()) {
+            val stroke = Stroke(width = size.minDimension * 0.11f, cap = StrokeCap.Round)
+            val inset = stroke.width / 2
+            val arcSize = Size(size.width - stroke.width, size.height - stroke.width)
+            drawArc(Palette.Outline, -90f, 360f, false, topLeft = Offset(inset, inset), size = arcSize, style = stroke)
+            drawArc(
+                Brush.sweepGradient(listOf(Palette.Cyan, Palette.Violet, Palette.Cyan)),
+                -90f, 360f * animated, false, topLeft = Offset(inset, inset), size = arcSize, style = stroke,
+            )
+        }
+        center()
+    }
+}
