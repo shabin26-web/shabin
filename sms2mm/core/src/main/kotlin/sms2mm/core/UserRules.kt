@@ -27,6 +27,8 @@ data class UserRules(
     val keywords: List<KeywordRule> = emptyList(),
     val transfers: List<TransferRule> = emptyList(),
     val ignore: List<String> = emptyList(),
+    /** Accounts and categories from a Money Manager export, for the pickers. */
+    val catalog: Catalog = Catalog(),
 ) {
     fun toRuleSet() = RuleSet(
         banks = banks.map { KnownBanks.rule(it.bank, it.senders.toSet(), it.defaultAccount ?: it.bank.defaultAccount) },
@@ -52,6 +54,28 @@ data class UserRules(
         val rule = keywords[ruleIndex]
         if (rule.keywords.any { it.equals(k, ignoreCase = true) }) return this
         return copy(keywords = keywords.toMutableList().also { it[ruleIndex] = rule.copy(keywords = rule.keywords + k) })
+    }
+
+    /**
+     * Import without losing anything: keeps all of this file's rules and adds what [other]
+     * has that this one doesn't. Where both define the same thing, this file wins.
+     */
+    fun merge(other: UserRules): UserRules {
+        fun key(ws: List<String>) = ws.map { it.trim().lowercase() }.toSet()
+        val haveKeywords = keywords.map { key(it.keywords) }.toSet()
+        val haveTransfers = transfers.map { key(it.keywords) }.toSet()
+        return copy(
+            banks = banks.map { mine ->
+                val theirs = other.banks.firstOrNull { it.bank == mine.bank } ?: return@map mine
+                mine.copy(senders = (mine.senders + theirs.senders).distinctBy { it.lowercase() })
+            } + other.banks.filter { o -> banks.none { it.bank == o.bank } },
+            accounts = other.accounts + accounts,
+            accountGroups = other.accountGroups + accountGroups,
+            keywords = keywords + other.keywords.filter { key(it.keywords) !in haveKeywords },
+            transfers = transfers + other.transfers.filter { key(it.keywords) !in haveTransfers },
+            ignore = (ignore + other.ignore).distinctBy { it.trim().lowercase() },
+            catalog = if (catalog.isEmpty) other.catalog else catalog,
+        )
     }
 
     companion object {
