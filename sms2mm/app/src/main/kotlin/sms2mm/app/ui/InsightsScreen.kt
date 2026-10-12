@@ -27,7 +27,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,15 +59,15 @@ fun InsightsScreen(modifier: Modifier) {
 
     Column(modifier.padding(horizontal = 16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-            TextButton(onClick = { monthOffset++ }) { Text("‹", color = Palette.Cyan, style = MaterialTheme.typography.titleLarge) }
+            TextButton(onClick = { monthOffset++ }) { Text("‹", color = Palette.Accent, style = MaterialTheme.typography.titleLarge) }
             Text("${month.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${month.year}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            TextButton(enabled = monthOffset > 0, onClick = { monthOffset-- }) { Text("›", color = if (monthOffset > 0) Palette.Cyan else Palette.Outline, style = MaterialTheme.typography.titleLarge) }
+            TextButton(enabled = monthOffset > 0, onClick = { monthOffset-- }) { Text("›", color = if (monthOffset > 0) Palette.Accent else Palette.TextDim.copy(alpha = 0.35f), style = MaterialTheme.typography.titleLarge) }
         }
         if (currencies.size > 1) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             currencies.forEach { c ->
                 FilterChip(
                     selected = c == currency, onClick = { currency = c }, label = { Text(c) },
-                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Palette.Cyan.copy(alpha = 0.16f), selectedLabelColor = Palette.Cyan),
+                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Palette.AccentSoft, selectedLabelColor = Palette.Accent),
                 )
             }
         }
@@ -77,7 +76,7 @@ fun InsightsScreen(modifier: Modifier) {
             Tile("SPENT", spent, currency, Palette.Text, Modifier.weight(1f))
             Tile("RECEIVED", received, currency, Palette.Green, Modifier.weight(1f))
         }
-        if (moved.signum() > 0) Tile("TRANSFERRED", moved, currency, Palette.Violet, Modifier.fillMaxWidth())
+        if (moved.signum() > 0) Tile("TRANSFERRED", moved, currency, Palette.Accent, Modifier.fillMaxWidth())
 
         if (list.isEmpty()) {
             Text("No bank SMS captured for this month yet.", color = Palette.TextDim, modifier = Modifier.padding(vertical = 24.dp))
@@ -103,7 +102,7 @@ fun InsightsScreen(modifier: Modifier) {
             Panel("Top merchants") {
                 merchants.forEachIndexed { i, (name, v) ->
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 6.dp)) {
-                        Text("${i + 1}", color = Palette.Cyan, fontWeight = FontWeight.Bold, modifier = Modifier.padding(end = 12.dp))
+                        Text("${i + 1}", color = Palette.Accent, fontWeight = FontWeight.Bold, modifier = Modifier.padding(end = 12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text("${v.first} purchase${if (v.first == 1) "" else "s"}", style = MaterialTheme.typography.labelSmall, color = Palette.TextDim)
@@ -129,7 +128,7 @@ fun InsightsScreen(modifier: Modifier) {
 
 @Composable
 private fun Tile(label: String, amount: BigDecimal, currency: String, color: androidx.compose.ui.graphics.Color, modifier: Modifier) {
-    Column(modifier.glass(RoundedCornerShape(18.dp)).padding(14.dp)) {
+    Column(modifier.card(RoundedCornerShape(18.dp)).padding(14.dp)) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = Palette.TextDim)
         Text(money(amount), style = MaterialTheme.typography.headlineMedium, color = color, fontWeight = FontWeight.Bold)
         Text(currency, style = MaterialTheme.typography.labelSmall, color = Palette.TextDim)
@@ -138,8 +137,8 @@ private fun Tile(label: String, amount: BigDecimal, currency: String, color: and
 
 @Composable
 private fun Panel(title: String, content: @Composable () -> Unit) {
-    Column(Modifier.fillMaxWidth().glass().padding(16.dp)) {
-        Text(title.uppercase(), style = MaterialTheme.typography.labelSmall, color = Palette.Cyan, modifier = Modifier.padding(bottom = 8.dp))
+    Column(Modifier.fillMaxWidth().card().padding(16.dp)) {
+        Text(title.uppercase(), style = MaterialTheme.typography.labelSmall, color = Palette.Accent, modifier = Modifier.padding(bottom = 8.dp))
         content()
     }
 }
@@ -152,8 +151,8 @@ private fun Bar(label: String, amount: BigDecimal, max: BigDecimal, currency: St
             Text(label, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
             Text("${money(amount)} $currency", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
         }
-        Box(Modifier.fillMaxWidth().height(8.dp).padding(top = 3.dp).clip(RoundedCornerShape(50)).background(Palette.Outline)) {
-            Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().clip(RoundedCornerShape(50)).background(Brush.horizontalGradient(listOf(Palette.Cyan, Palette.Violet))))
+        Box(Modifier.fillMaxWidth().height(8.dp).padding(top = 3.dp).clip(RoundedCornerShape(50)).background(Palette.SurfaceHigh)) {
+            Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().clip(RoundedCornerShape(50)).background(Palette.Accent))
         }
     }
 }

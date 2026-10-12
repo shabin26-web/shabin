@@ -15,8 +15,8 @@ android {
         applicationId = "sms2mm.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3"
+        versionCode = 4
+        versionName = "0.4"
     }
 
     // Stable signing key from CI secrets (see README "Updates"). With the same key every build,

@@ -77,7 +77,7 @@ fun PickField(
             .fillMaxWidth()
             .clip(shape)
             .background(Palette.SurfaceHigh)
-            .border(1.dp, if (value.isBlank()) Palette.Outline else Palette.Cyan.copy(alpha = 0.55f), shape)
+            .border(1.dp, if (value.isBlank()) Palette.Outline else Palette.Accent.copy(alpha = 0.55f), shape)
             .clickable(enabled = enabled) { open = true }
             .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
@@ -91,7 +91,7 @@ fun PickField(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            Text("▾", color = Palette.Cyan)
+            Text("▾", color = Palette.Accent)
         }
     }
     if (open) {
@@ -135,9 +135,9 @@ private fun Option(text: String, selected: Boolean, dim: Boolean = false, accent
         Text(
             text,
             modifier = Modifier.weight(1f),
-            color = when { accent -> Palette.Cyan; dim -> Palette.TextDim; else -> Palette.Text },
+            color = when { accent -> Palette.Accent; dim -> Palette.TextDim; else -> Palette.Text },
         )
-        if (selected) Text("✓", color = Palette.Cyan)
+        if (selected) Text("✓", color = Palette.Accent)
     }
     HorizontalDivider(color = Palette.Outline.copy(alpha = 0.4f))
 }

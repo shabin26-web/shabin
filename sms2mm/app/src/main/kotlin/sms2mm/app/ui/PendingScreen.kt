@@ -47,7 +47,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
@@ -76,7 +75,7 @@ private fun PendingTxn.accent(): Color = when {
     status == Status.ENTERED -> Palette.Green
     status == Status.IGNORED -> Palette.TextDim
     needsReview -> Palette.Amber
-    else -> Palette.Cyan
+    else -> Palette.Accent
 }
 
 private fun PendingTxn.statusText(): String = when {
@@ -117,7 +116,7 @@ fun PendingScreen(modifier: Modifier, onEdit: (String) -> Unit) {
                 Filter("All", show == Show.ALL) { show = Show.ALL }
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = { searching = !searching; if (!searching) query = "" }) {
-                    Icon(Icons.Rounded.Search, "Search", tint = if (searching) Palette.Cyan else Palette.TextDim)
+                    Icon(Icons.Rounded.Search, "Search", tint = if (searching) Palette.Accent else Palette.TextDim)
                 }
             }
             if (searching) {
@@ -145,7 +144,7 @@ fun PendingScreen(modifier: Modifier, onEdit: (String) -> Unit) {
         items(shown, key = { it.id }) { t -> SwipeCard(t, onEdit) }
         item {
             TextButton(onClick = { ActionReceiver.openMoneyManager(context) }, modifier = Modifier.fillMaxWidth()) {
-                Text("Open Money Manager ↗", color = Palette.Cyan)
+                Text("Open Money Manager ↗", color = Palette.Accent)
             }
             Spacer(Modifier.height(12.dp))
         }
@@ -160,13 +159,13 @@ private fun Filter(text: String, selected: Boolean, onClick: () -> Unit) = Filte
     shape = RoundedCornerShape(50),
     colors = FilterChipDefaults.filterChipColors(
         containerColor = Color.Transparent,
-        selectedContainerColor = Palette.Cyan.copy(alpha = 0.16f),
-        selectedLabelColor = Palette.Cyan,
+        selectedContainerColor = Palette.AccentSoft,
+        selectedLabelColor = Palette.Accent,
         labelColor = Palette.TextDim,
     ),
     border = FilterChipDefaults.filterChipBorder(
         enabled = true, selected = selected,
-        borderColor = Palette.Outline, selectedBorderColor = Palette.Cyan.copy(alpha = 0.6f),
+        borderColor = Palette.Outline, selectedBorderColor = Palette.Accent.copy(alpha = 0.6f),
     ),
 )
 
@@ -177,7 +176,7 @@ private fun Summary(all: List<PendingTxn>, skips: List<SkipEvent>) {
     val inMonth = all.filter { YearMonth.from(it.time) == month }
     val handled = inMonth.count { !it.status.isOpen }
     val fraction = if (inMonth.isEmpty()) 1f else handled.toFloat() / inMonth.size
-    Column(Modifier.fillMaxWidth().padding(top = 8.dp).glass().padding(18.dp)) {
+    Column(Modifier.fillMaxWidth().padding(top = 8.dp).card().padding(18.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             ProgressRing(fraction, Modifier.size(92.dp)) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -265,7 +264,7 @@ private fun TxnCard(t: PendingTxn, onEdit: (String) -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
-            .glass(RoundedCornerShape(20.dp), alpha = 0.9f)
+            .card(RoundedCornerShape(18.dp))
             .combinedClickable(
                 onClick = { onEdit(t.id) },
                 onLongClick = {
@@ -278,10 +277,10 @@ private fun TxnCard(t: PendingTxn, onEdit: (String) -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier.size(42.dp).clip(CircleShape)
-                    .background(Brush.linearGradient(listOf(accent.copy(alpha = 0.9f), Palette.Violet.copy(alpha = 0.6f)))),
+                    .background(accent.copy(alpha = 0.12f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(title.trim().firstOrNull()?.uppercase() ?: "•", color = Palette.Background, fontWeight = FontWeight.Bold)
+                Text(title.trim().firstOrNull()?.uppercase() ?: "•", color = accent, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
@@ -310,6 +309,17 @@ private fun TxnCard(t: PendingTxn, onEdit: (String) -> Unit) {
                 Text(t.currency, style = MaterialTheme.typography.labelSmall, color = Palette.TextDim)
             }
         }
+        if (open && t.duplicateOf != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 10.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                    .background(Palette.Amber.copy(alpha = 0.10f)).padding(start = 12.dp),
+            ) {
+                Text("⚠ Possible duplicate", color = Palette.Amber, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                TextButton(onClick = { Store.update(context, t.id) { it.copy(duplicateOf = null) } }) { Text("Keep", color = Palette.TextDim) }
+                TextButton(onClick = { ActionReceiver.setStatus(context, t.id, Status.IGNORED) }) { Text("Ignore duplicate", color = Palette.Amber) }
+            }
+        }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 10.dp)) {
             Pill(t.statusText(), accent)
             Text("  ${t.time.format(TIME)} · ${t.bank}", color = Palette.TextDim, style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f), maxLines = 1)
@@ -318,7 +328,7 @@ private fun TxnCard(t: PendingTxn, onEdit: (String) -> Unit) {
                 IconButton(onClick = { ActionReceiver.setStatus(context, t.id, Status.IGNORED) }) { Icon(Icons.Rounded.Close, "Ignore", tint = Palette.TextDim) }
                 Button(
                     onClick = { ActionReceiver.setStatus(context, t.id, Status.ENTERED) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Palette.Cyan, contentColor = Color(0xFF00222A)),
+                    colors = ButtonDefaults.buttonColors(containerColor = Palette.Accent, contentColor = Color.White),
                     shape = RoundedCornerShape(50),
                     modifier = Modifier.height(36.dp),
                 ) { Text("✔ Recorded", fontWeight = FontWeight.SemiBold) }

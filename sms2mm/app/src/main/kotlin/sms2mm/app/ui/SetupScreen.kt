@@ -1,6 +1,7 @@
 package sms2mm.app.ui
 
 import android.Manifest
+import android.app.TimePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -18,8 +19,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.getValue
@@ -31,6 +34,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import sms2mm.app.ExportImport
+import sms2mm.app.Reminder
 import sms2mm.app.Store
 import sms2mm.core.UserRules
 
@@ -78,6 +82,24 @@ fun SetupScreen(modifier: Modifier) {
         }
     }
     val catalog = Store.rules(context).catalog
+    val exportPending = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+    ) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            val msg = withContext(Dispatchers.IO) {
+                try {
+                    val (bytes, n) = ExportImport.exportPending(context)
+                    context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) } ?: error("Could not save the file")
+                    "Exported $n pending item${if (n == 1) "" else "s"}"
+                } catch (e: Exception) {
+                    "Export failed: ${e.message}"
+                }
+            }
+            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+        }
+    }
+    var reminder by remember { mutableStateOf(Reminder.settings(context)) }
 
     Column(modifier.padding(horizontal = 16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SectionTitle("1. Permissions")
@@ -130,6 +152,38 @@ fun SetupScreen(modifier: Modifier) {
             OutlinedButton(onClick = { importRules.launch(arrayOf("application/json", "text/plain", "*/*")) }) { Text("Import rules (merge)") }
             OutlinedButton(onClick = { exportRules.launch("sms2mm-rules.json") }) { Text("Export rules") }
         }
+
+        SectionTitle("4. Daily reminder")
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Remind me about pending items")
+                Text(
+                    "Every day at %02d:%02d, only when something is still pending".format(reminder.hour, reminder.minute),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Palette.TextDim,
+                )
+            }
+            Switch(checked = reminder.enabled, onCheckedChange = {
+                reminder = reminder.copy(enabled = it)
+                Reminder.save(context, reminder)
+            })
+        }
+        if (reminder.enabled) {
+            OutlinedButton(onClick = {
+                TimePickerDialog(context, { _, h, m ->
+                    reminder = reminder.copy(hour = h, minute = m)
+                    Reminder.save(context, reminder)
+                }, reminder.hour, reminder.minute, true).show()
+            }) { Text("Change time") }
+        }
+
+        SectionTitle("5. Export pending to Excel")
+        Text(
+            "Saves the pending list as .xlsx (Arial, live totals per currency, duplicates and items without a category highlighted) " +
+                "— handy for entering several at once or as a checklist.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        OutlinedButton(onClick = { exportPending.launch("sms2mm-pending-${java.time.LocalDate.now()}.xlsx") }) { Text("Export pending (.xlsx)") }
 
         SectionTitle("How it works")
         Text(

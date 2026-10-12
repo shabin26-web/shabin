@@ -32,7 +32,7 @@ object Notifier {
 
     fun title(t: PendingTxn) = "${t.currency} ${t.amount} · ${t.note ?: t.merchant ?: t.bank}"
 
-    fun summary(t: PendingTxn) = when (t.type) {
+    fun summary(t: PendingTxn) = (if (t.duplicateOf != null) "⚠ Possible duplicate · " else "") + when (t.type) {
         TxnType.TRANSFER -> "Transfer ${t.account} → ${t.toAccount}"
         else -> "${t.category.label()} · ${t.account}" + if (t.needsReview) " · choose a category" else ""
     }
@@ -64,7 +64,9 @@ object Notifier {
             .setAutoCancel(false)
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-        builder.setStyle(NotificationCompat.BigTextStyle().bigText(details(t)))
+        builder.setStyle(NotificationCompat.BigTextStyle().bigText(
+            (if (t.duplicateOf != null) "⚠ Possible duplicate: same amount and merchant as an SMS a few minutes earlier\n" else "") + details(t),
+        ))
         builder.addAction(0, "Recorded ✔", ActionReceiver.intent(ctx, ActionReceiver.RECORDED, t))
         builder.addAction(0, if (t.needsReview) "Pick category" else "Edit", edit)
         builder.addAction(0, "Ignore", ActionReceiver.intent(ctx, ActionReceiver.IGNORE, t))

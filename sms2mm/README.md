@@ -11,6 +11,8 @@ still pending this month, and the total reaches 0 when everything is recorded.
 - **No internet permission.** The app cannot send anything off your phone. CI fails the
   build if `android.permission.INTERNET` ever appears. Check it yourself: Android
   Settings → Apps → SMS → Money Manager → Permissions.
+- **Reminder needs no extra access.** The optional daily reminder uses an ordinary alarm. The only
+  added permission is `RECEIVE_BOOT_COMPLETED`, which re-arms the alarm after a restart.
 - **Bank senders only.** SMS from senders not on your bank list are not read further.
 - **OTP messages are dropped first.** Anything mentioning OTP, verification code,
   password, PIN, "do not share", رمز, التحقق, كلمة المرور or لا تشارك is discarded
@@ -70,6 +72,21 @@ Keep the keystore private; anyone with it could sign an app that installs as an 
   - loads all your accounts, categories and subcategories into the pick lists
   - marks pending items that are already in Money Manager as Recorded: same account, same amount, within a day
 - **Setup → Import rules (merge)** adds rules from a file and keeps everything you already have.
+- **Possible duplicate alert**:
+  - When an SMS has the same amount, currency and merchant as another one within 10 minutes, its card and
+    notification show **⚠ Possible duplicate**. This catches a double charge or a repeated alert.
+  - Tap **Ignore duplicate** to drop it, or **Keep** if it is a real second purchase.
+- **Setup → Daily reminder**:
+  - When it's on, you get one notification a day (default 21:00) with "N pending · SAR …".
+  - Nothing is posted when everything is recorded.
+- **Setup → Export pending (.xlsx)** saves the open items as an Excel file:
+  - Arial font, bold header, frozen first row and filters
+  - live `SUMIF` totals per currency, a row count, and a check cell that should read 0
+  - possible duplicates and items that still need a category are highlighted amber
+
+## Look
+
+v0.4 uses a clean light theme: white cards on soft grey, dark text and one blue accent.
 
 ## Supported SMS layouts (`core/.../KnownBanks.kt`)
 

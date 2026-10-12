@@ -11,6 +11,8 @@
     <!-- Only used by "Scan inbox" on the Banks screen to suggest bank sender names. -->
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Only to re-arm the optional daily pending reminder after a restart. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- So the "Open Money Manager" button can launch it (Android 11+ package visibility). -->
     <queries>
@@ -48,6 +50,15 @@
         <receiver
             android:name=".ActionReceiver"
             android:exported="false" />
+
+        <receiver
+            android:name=".ReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
     </application>
 </manifest>

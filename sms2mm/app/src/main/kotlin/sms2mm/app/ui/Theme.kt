@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
@@ -14,37 +14,36 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** Calm dark palette with a cyan → violet accent. */
+/** Clean light palette: white cards on soft grey, dark text, one blue accent. */
 object Palette {
-    val Background = Color(0xFF060910)
-    val Surface = Color(0xFF0F1522)
-    val SurfaceHigh = Color(0xFF172036)
-    val Outline = Color(0xFF243150)
-    val Text = Color(0xFFE6EAF2)
-    val TextDim = Color(0xFF8B94A8)
-    val Cyan = Color(0xFF22D3EE)
-    val Violet = Color(0xFFA78BFA)
-    val Green = Color(0xFF34D399)
-    val Amber = Color(0xFFFBBF24)
-    val Red = Color(0xFFF87171)
-
-    val Accent: Brush get() = Brush.linearGradient(listOf(Cyan, Violet))
+    val Background = Color(0xFFF6F7F9)
+    val Surface = Color(0xFFFFFFFF)
+    val SurfaceHigh = Color(0xFFEEF1F5)
+    val Outline = Color(0xFFE2E6EC)
+    val Text = Color(0xFF111827)
+    val TextDim = Color(0xFF5B6474)
+    val Accent = Color(0xFF2563EB)
+    val AccentSoft = Color(0xFFE8EFFD)
+    val Green = Color(0xFF16A34A)
+    val Amber = Color(0xFFD97706)
+    val Red = Color(0xFFDC2626)
 }
 
-private val colors = darkColorScheme(
-    primary = Palette.Cyan,
-    onPrimary = Color(0xFF00222A),
-    secondary = Palette.Violet,
-    onSecondary = Color(0xFF1C1033),
+private val colors = lightColorScheme(
+    primary = Palette.Accent,
+    onPrimary = Color.White,
+    primaryContainer = Palette.AccentSoft,
+    onPrimaryContainer = Palette.Accent,
+    secondary = Palette.Accent,
+    onSecondary = Color.White,
     tertiary = Palette.Green,
     background = Palette.Background,
     onBackground = Palette.Text,
@@ -53,14 +52,15 @@ private val colors = darkColorScheme(
     surfaceVariant = Palette.SurfaceHigh,
     onSurfaceVariant = Palette.TextDim,
     surfaceContainer = Palette.Surface,
-    surfaceContainerHigh = Palette.SurfaceHigh,
+    surfaceContainerHigh = Palette.Surface,
     surfaceContainerHighest = Palette.SurfaceHigh,
     surfaceContainerLow = Palette.Surface,
+    surfaceContainerLowest = Palette.Surface,
     outline = Palette.Outline,
     outlineVariant = Palette.Outline,
     error = Palette.Red,
-    secondaryContainer = Color(0xFF173A45),
-    onSecondaryContainer = Palette.Cyan,
+    secondaryContainer = Palette.AccentSoft,
+    onSecondaryContainer = Palette.Accent,
 )
 
 private val type = Typography().run {
@@ -68,49 +68,37 @@ private val type = Typography().run {
         headlineMedium = headlineMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = (-0.5).sp),
         titleLarge = titleLarge.copy(fontWeight = FontWeight.SemiBold),
         titleMedium = titleMedium.copy(fontWeight = FontWeight.SemiBold),
-        labelSmall = labelSmall.copy(letterSpacing = 1.2.sp),
+        labelSmall = labelSmall.copy(letterSpacing = 0.6.sp, fontWeight = FontWeight.Medium),
     )
 }
 
 private val shapes = Shapes(
     small = RoundedCornerShape(10.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(22.dp),
+    medium = RoundedCornerShape(14.dp),
+    large = RoundedCornerShape(18.dp),
 )
 
 /** Big amount style used on the summary and transaction cards. */
-val AmountStyle = TextStyle(fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp)
+val AmountStyle = TextStyle(fontSize = 32.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp, color = Palette.Text)
 
 @Composable
 fun Sms2mmTheme(content: @Composable () -> Unit) =
     MaterialTheme(colorScheme = colors, typography = type, shapes = shapes, content = content)
 
-/** Translucent "glass" card: dark surface, 1 dp cyan → violet hairline. */
-fun androidx.compose.ui.Modifier.glass(
-    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(22.dp),
-    alpha: Float = 0.78f,
+/** White card: soft shadow, 1 dp light-grey border. */
+fun androidx.compose.ui.Modifier.card(
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(16.dp),
 ): androidx.compose.ui.Modifier = this
+    .shadow(1.dp, shape, clip = false, ambientColor = Color(0x14000000), spotColor = Color(0x14000000))
     .then(androidx.compose.ui.Modifier.clip(shape))
-    .background(Palette.Surface.copy(alpha = alpha))
-    .border(1.dp, Brush.linearGradient(listOf(Palette.Cyan.copy(alpha = 0.55f), Palette.Violet.copy(alpha = 0.35f), Palette.Outline)), shape)
+    .background(Palette.Surface)
+    .border(1.dp, Palette.Outline, shape)
 
-/** Near-black background with soft cyan and violet glows. */
+/** Plain light background. */
 @Composable
-fun GlowBackground(content: @Composable () -> Unit) {
+fun AppBackground(content: @Composable () -> Unit) {
     androidx.compose.foundation.layout.Box(
-        androidx.compose.ui.Modifier
-            .fillMaxSize()
-            .background(Palette.Background)
-            .drawBehind {
-                drawCircle(
-                    Brush.radialGradient(listOf(Palette.Cyan.copy(alpha = 0.18f), Color.Transparent), center = Offset(size.width * 0.15f, size.height * 0.02f), radius = size.width * 0.9f),
-                    radius = size.width * 0.9f, center = Offset(size.width * 0.15f, size.height * 0.02f),
-                )
-                drawCircle(
-                    Brush.radialGradient(listOf(Palette.Violet.copy(alpha = 0.14f), Color.Transparent), center = Offset(size.width * 0.95f, size.height * 0.18f), radius = size.width * 0.8f),
-                    radius = size.width * 0.8f, center = Offset(size.width * 0.95f, size.height * 0.18f),
-                )
-            },
+        androidx.compose.ui.Modifier.fillMaxSize().background(Palette.Background),
     ) { content() }
 }
 
@@ -124,14 +112,11 @@ fun ProgressRing(fraction: Float, modifier: androidx.compose.ui.Modifier = andro
     )
     androidx.compose.foundation.layout.Box(modifier, contentAlignment = androidx.compose.ui.Alignment.Center) {
         androidx.compose.foundation.Canvas(androidx.compose.ui.Modifier.fillMaxSize()) {
-            val stroke = Stroke(width = size.minDimension * 0.11f, cap = StrokeCap.Round)
+            val stroke = Stroke(width = size.minDimension * 0.10f, cap = StrokeCap.Round)
             val inset = stroke.width / 2
             val arcSize = Size(size.width - stroke.width, size.height - stroke.width)
-            drawArc(Palette.Outline, -90f, 360f, false, topLeft = Offset(inset, inset), size = arcSize, style = stroke)
-            drawArc(
-                Brush.sweepGradient(listOf(Palette.Cyan, Palette.Violet, Palette.Cyan)),
-                -90f, 360f * animated, false, topLeft = Offset(inset, inset), size = arcSize, style = stroke,
-            )
+            drawArc(Palette.SurfaceHigh, -90f, 360f, false, topLeft = Offset(inset, inset), size = arcSize, style = stroke)
+            drawArc(Palette.Accent, -90f, 360f * animated, false, topLeft = Offset(inset, inset), size = arcSize, style = stroke)
         }
         center()
     }

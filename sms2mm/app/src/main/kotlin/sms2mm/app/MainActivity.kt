@@ -3,6 +3,7 @@ package sms2mm.app
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Column
@@ -15,8 +16,8 @@ import androidx.compose.material.icons.automirrored.rounded.List
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.sp
-import sms2mm.app.ui.GlowBackground
+import sms2mm.app.ui.AppBackground
+import androidx.compose.material3.HorizontalDivider
 import sms2mm.app.ui.InsightsScreen
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -50,9 +51,13 @@ class MainActivity : ComponentActivity() {
     private var editId by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(android.graphics.Color.WHITE, android.graphics.Color.WHITE),
+        )
         super.onCreate(savedInstanceState)
         Notifier.ensureChannel(this)
+        Reminder.schedule(this)
         editId = intent.getStringExtra(EXTRA_EDIT)
         setContent { App(editId) { editId = it } }
     }
@@ -80,29 +85,32 @@ private val tabs = listOf(
 @Composable
 private fun App(editId: String?, setEditId: (String?) -> Unit) {
     Sms2mmTheme {
-      GlowBackground {
+      AppBackground {
         var tab by rememberSaveable { mutableIntStateOf(0) }
         Scaffold(
             containerColor = Color.Transparent,
             topBar = { Header() },
             bottomBar = {
-                NavigationBar(containerColor = Palette.Surface.copy(alpha = 0.92f), tonalElevation = 0.dp) {
+                Column {
+                HorizontalDivider(color = Palette.Outline)
+                NavigationBar(containerColor = Palette.Surface, tonalElevation = 0.dp) {
                     tabs.forEachIndexed { i, t ->
                         NavigationBarItem(
                             selected = tab == i,
                             onClick = { tab = i },
                             icon = { Icon(t.icon, contentDescription = t.label) },
                             label = { Text(t.label, style = MaterialTheme.typography.labelSmall) },
-                            alwaysShowLabel = false,
+                            alwaysShowLabel = true,
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Palette.Cyan,
-                                selectedTextColor = Palette.Cyan,
-                                indicatorColor = Palette.SurfaceHigh,
+                                selectedIconColor = Palette.Accent,
+                                selectedTextColor = Palette.Accent,
+                                indicatorColor = Palette.AccentSoft,
                                 unselectedIconColor = Palette.TextDim,
                                 unselectedTextColor = Palette.TextDim,
                             ),
                         )
                     }
+                }
                 }
             },
         ) { padding ->
@@ -122,16 +130,16 @@ private fun App(editId: String?, setEditId: (String?) -> Unit) {
 
 @Composable
 private fun Header() {
-    Column(Modifier.statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 4.dp)) {
+    Column(Modifier.statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 6.dp)) {
         Text(
             buildAnnotatedString {
                 append("SMS")
-                withStyle(SpanStyle(color = Palette.Cyan)) { append(" ⟶ ") }
-                append("MONEY")
+                withStyle(SpanStyle(color = Palette.Accent)) { append(" → ") }
+                append("Money Manager")
             },
-            style = MaterialTheme.typography.titleLarge.copy(letterSpacing = 3.sp),
+            style = MaterialTheme.typography.titleLarge,
             color = Palette.Text,
         )
-        Text("● OFFLINE   ● OTP-SAFE   ● NO INTERNET", style = MaterialTheme.typography.labelSmall, color = Palette.Cyan.copy(alpha = 0.75f))
+        Text("Offline · OTP-safe · No internet", style = MaterialTheme.typography.labelSmall, color = Palette.TextDim)
     }
 }

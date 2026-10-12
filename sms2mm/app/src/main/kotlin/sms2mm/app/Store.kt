@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import sms2mm.core.Category
+import sms2mm.core.Duplicates
 import sms2mm.core.RuleSet
 import sms2mm.core.SmsOutcome
 import sms2mm.core.TxnType
@@ -46,10 +47,13 @@ data class PendingTxn(
     val needsReview: Boolean = false,
     val status: Status = Status.PENDING,
     val failReason: String? = null,
+    /** Id of an earlier transaction this one probably repeats (same amount and merchant within minutes). */
+    val duplicateOf: String? = null,
 ) {
     val time: LocalDateTime get() = LocalDateTime.parse(occurredAt)
     val amountValue: BigDecimal get() = BigDecimal(amount)
     val notificationId: Int get() = id.hashCode()
+    val dupKey: Duplicates.Key get() = Duplicates.Key(id, amountValue, currency, merchant ?: note, time)
 
     companion object {
         fun from(p: SmsOutcome.Parsed) = PendingTxn(
@@ -155,10 +159,16 @@ object Store {
         write(ctx, "txns.json", json.encodeToString(txnList, list))
     }
 
-    /** Adds a new transaction; false when the same SMS was already captured. */
-    fun insert(ctx: Context, txn: PendingTxn): Boolean = synchronized(lock) {
+    /**
+     * Adds a new transaction and returns it (flagged when it looks like a repeat of a recent one),
+     * or null when the same SMS was already captured.
+     */
+    fun insert(ctx: Context, txn: PendingTxn): PendingTxn? = synchronized(lock) {
         val list = txns(ctx)
-        if (list.any { it.id == txn.id }) false else { saveTxns(ctx, listOf(txn) + list); true }
+        if (list.any { it.id == txn.id }) null else {
+            val dup = Duplicates.find(txn.dupKey, list.filter { it.status != Status.IGNORED }.map { it.dupKey })
+            txn.copy(duplicateOf = dup).also { saveTxns(ctx, listOf(it) + list) }
+        }
     }
 
     fun update(ctx: Context, id: String, change: (PendingTxn) -> PendingTxn) = synchronized(lock) {

@@ -46,7 +46,7 @@ object Pipeline {
             }
             is SmsOutcome.Parsed -> {
                 val txn = PendingTxn.from(out)
-                if (Store.insert(ctx, txn)) Notifier.show(ctx, txn)
+                Store.insert(ctx, txn)?.let { Notifier.show(ctx, it) }
             }
         }
     }
